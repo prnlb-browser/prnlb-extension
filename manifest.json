@@ -1,24 +1,31 @@
 {
   "manifest_version": 3,
-  "name": "DOM Analyzer",
+  "name": "PRNLB Viewer",
   "version": "1.0",
-  "description": "Analyze the current page DOM and show a dialog with insights.",
-  "permissions": ["activeTab", "scripting"],
+  "description": "View screenshots from Pornolab topic pages in a carousel.",
+  "permissions": ["activeTab"],
+  "host_permissions": [
+    "https://pornolab.net/*",
+    "https://*.fastpic.org/*",
+    "https://fastpic.org/*",
+    "https://*.imgbox.com/*",
+    "https://imgbox.com/*"
+  ],
   "action": {
-    "default_title": "Analyze DOM",
+    "default_title": "View screenshots",
     "default_icon": {
-      "16": "icon.svg",
-      "48": "icon.svg",
-      "128": "icon.svg"
+      "16": "icon.png",
+      "48": "icon.png",
+      "128": "icon.png"
     }
   },
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "dist/background.js"
   },
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
-      "js": ["content.js"]
+      "matches": ["https://pornolab.net/forum/viewtopic.php*"],
+      "js": ["dist/content.js"]
     }
   ]
 }

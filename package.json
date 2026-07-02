@@ -1,0 +1,15 @@
+{
+  "name": "prnlb-extension",
+  "version": "1.0.0",
+  "private": true,
+  "description": "View screenshots from Pornolab topic pages in a carousel.",
+  "scripts": {
+    "build": "esbuild src/background.ts src/content.ts --bundle --outdir=dist --format=esm --target=chrome110",
+    "watch": "esbuild src/background.ts src/content.ts --bundle --outdir=dist --format=esm --target=chrome110 --watch"
+  },
+  "devDependencies": {
+    "chrome-types": "^0.1.0",
+    "esbuild": "^0.25.0",
+    "typescript": "^5.7.0"
+  }
+}
