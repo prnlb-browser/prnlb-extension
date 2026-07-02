@@ -1,0 +1,24 @@
+{
+  "manifest_version": 3,
+  "name": "DOM Analyzer",
+  "version": "1.0",
+  "description": "Analyze the current page DOM and show a dialog with insights.",
+  "permissions": ["activeTab", "scripting"],
+  "action": {
+    "default_title": "Analyze DOM",
+    "default_icon": {
+      "16": "icon.svg",
+      "48": "icon.svg",
+      "128": "icon.svg"
+    }
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"]
+    }
+  ]
+}
