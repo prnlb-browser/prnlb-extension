@@ -1,3 +1,5 @@
+import type { ScrapedImage } from "./resolvers/types";
+
 export type ExtensionMessage =
   | { action: "showCarousel" }
-  | { action: "resolveImages"; urls: string[] };
+  | { action: "resolveImages"; images: ScrapedImage[] };

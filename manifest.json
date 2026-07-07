@@ -6,8 +6,8 @@
   "permissions": ["activeTab"],
   "host_permissions": [
     "https://pornolab.net/*",
-    "https://*.fastpic.org/*",
-    "https://fastpic.org/*",
+    "*://*.fastpic.org/*",
+    "*://fastpic.org/*",
     "https://*.imgbox.com/*",
     "https://imgbox.com/*"
   ],

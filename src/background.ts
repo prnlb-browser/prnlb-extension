@@ -12,19 +12,19 @@ chrome.action.onClicked.addListener((tab) => {
   });
 });
 
-// ===== Message proxy: content script sends URLs, background resolves them =====
+// ===== Message proxy: content script sends images, background resolves them =====
 
 chrome.runtime.onMessage.addListener(
   (message: ExtensionMessage, _sender, sendResponse) => {
     if (message.action === "resolveImages") {
-      const urls = message.urls;
-      if (!Array.isArray(urls) || urls.length === 0) {
+      const images = message.images;
+      if (!Array.isArray(images) || images.length === 0) {
         sendResponse({ images: [] });
         return true;
       }
 
-      resolverRegistry.resolveImages(urls).then((images) => {
-        sendResponse({ images });
+      resolverRegistry.resolveImages(images).then((resolved) => {
+        sendResponse({ images: resolved });
       });
 
       return true; // Keep channel open for async sendResponse

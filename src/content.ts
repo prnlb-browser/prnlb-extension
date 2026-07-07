@@ -1,48 +1,72 @@
-import type { ResolvedImage } from "./resolvers/types";
+import type { ResolvedImage, ScrapedImage } from "./resolvers/types";
 import type { ExtensionMessage } from "./types";
 
 // ===== Image extraction =====
 
-function extractImagesFromPost(): string[] {
-  const urls: string[] = [];
+function extractImagesFromPost(): ScrapedImage[] {
+  const images: ScrapedImage[] = [];
 
   // Method 1: <var class="postImg" title="URL"> — BBCode [img] tags
+  // When wrapped in an <a> tag, use <img src> as thumbnail and <a href> as resolve URL
   document.querySelectorAll("var.postImg").forEach((el) => {
-    const title = el.getAttribute("title");
-    if (title) urls.push(title);
+    const imgEl = el.querySelector("img");
+    const imgSrc = imgEl ? imgEl.getAttribute("src") : null;
+    const titleSrc = el.getAttribute("title");
+    const thumbnail = (imgSrc || titleSrc || "");
+
+    const parentLink = el.closest("a");
+    if (parentLink) {
+      const href = parentLink.getAttribute("href");
+      if (href && href.startsWith("http")) {
+        images.push({ thumbnailUrl: thumbnail, resolveUrl: href });
+        return;
+      }
+    }
+    // No parent link — use thumbnail URL as the resolve URL too
+    if (thumbnail) images.push({ thumbnailUrl: thumbnail, resolveUrl: thumbnail });
   });
 
   // Method 2: <img> tags inside the first post message
+  // Skip <img> elements inside <var class="postImg"> — those are handled by Method 1
   document.querySelectorAll(".post-user-message img").forEach((el) => {
+    if (el.closest("var.postImg")) return;
     const src = el.getAttribute("src");
-    if (src) urls.push(src);
+    if (src) images.push({ thumbnailUrl: src, resolveUrl: src });
   });
 
-  // Method 3: <a> tags wrapping images
+  // Method 3: <a> tags with images inside the first post
+  // Skip <img> elements inside <var class="postImg"> — those are handled by Method 1
   document.querySelectorAll(".post-user-message a img").forEach((el) => {
+    if (el.closest("var.postImg")) return;
     const src = el.getAttribute("src");
-    if (src) urls.push(src);
+    if (src) images.push({ thumbnailUrl: src, resolveUrl: src });
   });
 
-  // Method 4: Raw fastpic.org URLs in <a> tags that don't wrap an embedded thumb
-  document
-    .querySelectorAll(".post-user-message a[href*='fastpic.org']")
-    .forEach((el) => {
-      if (el.querySelector("var.postImg")) return;
-      const href = el.getAttribute("href");
-      if (href) urls.push(href);
-    });
+  // Method 4: <a> tags that point to known image hosts.
+  // Exclude links that wrap a <var class="postImg"> — those are already handled by Method 1
+  document.querySelectorAll(".post-user-message a[href]").forEach((el) => {
+    if (el.querySelector("var.postImg")) return;
+    const href = el.getAttribute("href");
+    if (href && href.startsWith("http")) {
+      images.push({ thumbnailUrl: href, resolveUrl: href });
+    }
+  });
 
-  // Resolve relative URLs and deduplicate
-  return [
-    ...new Set(
-      urls.map((u) =>
-        u.startsWith("http")
-          ? u
-          : `https://pornolab.net/forum/${u.replace(/^\.\//, "")}`
-      )
-    ),
-  ];
+  // Resolve relative URLs and deduplicate by resolveUrl
+  const seen = new Set<string>();
+  const resolved: ScrapedImage[] = [];
+  for (const img of images) {
+    const resolveUrl = img.resolveUrl.startsWith("http")
+      ? img.resolveUrl
+      : `https://pornolab.net/forum/${img.resolveUrl.replace(/^\.\//, "")}`;
+    const thumbnailUrl = img.thumbnailUrl.startsWith("http")
+      ? img.thumbnailUrl
+      : `https://pornolab.net/forum/${img.thumbnailUrl.replace(/^\.\//, "")}`;
+    if (seen.has(resolveUrl)) continue;
+    seen.add(resolveUrl);
+    resolved.push({ thumbnailUrl, resolveUrl });
+  }
+  return resolved;
 }
 
 // ===== Carousel UI =====
@@ -222,14 +246,14 @@ async function loadAndShowImages(): Promise<void> {
   progressBarContainer.hidden = true;
 
   // 1. Extract images from the page DOM
-  const imageUrls = extractImagesFromPost();
-  if (imageUrls.length === 0) {
+  const scrapedImages = extractImagesFromPost();
+  if (scrapedImages.length === 0) {
     progressText.textContent = "No images found in this post.";
     return;
   }
 
-  title.textContent = `Screenshots (${imageUrls.length} found)`;
-  progressText.textContent = `Sending ${imageUrls.length} images to background for resolution...`;
+  title.textContent = `Screenshots (${scrapedImages.length} found)`;
+  progressText.textContent = `Sending ${scrapedImages.length} images to background for resolution...`;
   progressBarContainer.hidden = false;
   progressBar.style.width = "30%";
 
@@ -237,7 +261,7 @@ async function loadAndShowImages(): Promise<void> {
   try {
     const response = await chrome.runtime.sendMessage({
       action: "resolveImages",
-      urls: imageUrls,
+      images: scrapedImages,
     });
 
     const resolved: ResolvedImage[] = response.images || [];
@@ -256,7 +280,7 @@ async function loadAndShowImages(): Promise<void> {
     thumbsContainer.innerHTML = "";
     resolved.forEach((img, i) => {
       const thumb = document.createElement("img");
-      thumb.src = img.originalUrl;
+      thumb.src = img.thumbnailUrl;
       thumb.alt = `Thumb ${i + 1}`;
       thumb.loading = "lazy";
       thumb.style.cssText =
