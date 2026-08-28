@@ -60,6 +60,10 @@ After making changes, run `npm run build` again and click **Reload** next to the
 
 > **Note:** Temporary add-ons are removed when Firefox is restarted. For permanent installation, package the extension as a `.xpi` file and sign it via [addons.mozilla.org](https://addons.mozilla.org/).
 
+## Download
+
+You can download the latest distributive from [Releases](https://github.com/prnlb-browser/prnlb-extension/releases).
+
 ## Support
 
 BTC — `bc1q7q0536ctrllvf7sp0ghlw2evwz75jn7x7nzc79`  
@@ -95,6 +99,10 @@ ETH — `0x87c7CB3d62Bc70A19638A01064B2028fB89E37BF`
 После внесения изменений выполните `npm run build` и нажмите **Перезагрузить** рядом с записью расширения на странице отладки.
 
 > **Примечание:** Временные дополнения удаляются при перезапуске Firefox. Для постоянной установки упакуйте директорию `dist/` в `.xpi` файл и подпишите через [addons.mozilla.org](https://addons.mozilla.org/).
+
+### Скачать
+
+Последнюю версию расширения можно скачать на странице [Releases](https://github.com/prnlb-browser/prnlb-extension/releases).
 
 ### Поддержка
 
