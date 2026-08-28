@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "PRNLB Viewer",
-  "version": "1.0",
+  "version": "1.0.1",
   "description": "View screenshots from Pornolab topic pages in a carousel.",
   "browser_specific_settings": {
     "gecko": {
