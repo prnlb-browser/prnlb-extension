@@ -3,6 +3,12 @@
   "name": "PRNLB Viewer",
   "version": "1.0",
   "description": "View screenshots from Pornolab topic pages in a carousel.",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "prnlb-viewer@example.com",
+      "strict_min_version": "120.0"
+    }
+  },
   "permissions": ["activeTab"],
   "host_permissions": [
     "https://pornolab.net/*",
@@ -20,12 +26,13 @@
     }
   },
   "background": {
-    "service_worker": "dist/background.js"
+    "service_worker": "background.js",
+    "scripts": ["background.js"]
   },
   "content_scripts": [
     {
       "matches": ["https://pornolab.net/forum/viewtopic.php*"],
-      "js": ["dist/content.js"]
+      "js": ["content.js"]
     }
   ]
 }

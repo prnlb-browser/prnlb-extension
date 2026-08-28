@@ -1,3 +1,4 @@
+import browser from "webextension-polyfill";
 import type { ResolvedImage, ScrapedImage } from "./resolvers/types";
 import type { ExtensionMessage } from "./types";
 
@@ -259,7 +260,7 @@ async function loadAndShowImages(): Promise<void> {
 
   // 2. Send to background service worker for CORS-free resolution
   try {
-    const response = await chrome.runtime.sendMessage({
+    const response = await browser.runtime.sendMessage({
       action: "resolveImages",
       images: scrapedImages,
     });

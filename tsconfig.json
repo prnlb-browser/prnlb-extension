@@ -9,8 +9,7 @@
     "outDir": "dist",
     "rootDir": "src",
     "sourceMap": false,
-    "declaration": false,
-    "types": ["chrome-types"]
+    "declaration": false
   },
   "include": ["src/**/*.ts"]
 }
