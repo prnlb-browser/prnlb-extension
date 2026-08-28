@@ -31,11 +31,10 @@ export class FastpicResolver implements ImageHostResolver {
 
   async resolve(url: string): Promise<string | null> {
     try {
-      // Fetch the page directly — if it's a thumbnail URL, fastpic will
-      // 302 redirect us to the view page, which fetch() follows automatically.
-      const html = await this.fetchPage(url);
+      const pageUrl = this.buildViewPageUrl(url);
+      if (!pageUrl) return null;
 
-      // Look for the full-size image URL in the HTML.
+      const html = await this.fetchPage(pageUrl);
       const bigUrl = this.extractBigImageUrl(html);
       if (bigUrl) return bigUrl;
 
@@ -61,6 +60,49 @@ export class FastpicResolver implements ImageHostResolver {
         }
       } catch {}
 
+      return null;
+    }
+  }
+
+  /**
+   * Convert a Fastpic thumbnail or direct image URL to its public view page.
+   * View-page URLs are already suitable and are returned unchanged.
+   * Returns null if the URL cannot be parsed.
+   */
+  private buildViewPageUrl(url: string): string | null {
+    try {
+      const parsed = new URL(url);
+
+      // Already a view page URL — return as-is
+      if (
+        (parsed.hostname === "fastpic.org" || parsed.hostname === "www.fastpic.org") &&
+        parsed.pathname.startsWith("/view/")
+      ) {
+        return parsed.toString();
+      }
+
+      // Thumbnail/direct image URL: i<N>.fastpic.org/{big|thumb}/YYYY/MMDD/.../file.ext
+      const hostMatch = parsed.hostname.match(/^i(\d+)\.fastpic\.org$/i);
+      if (!hostMatch) return null;
+
+      const parts = parsed.pathname.split("/").filter(Boolean);
+      if (parts.length < 4 || !["big", "thumb"].includes(parts[0]!)) return null;
+
+      const year = parts[1]!;
+      const date = parts[2]!;
+      const fileName = parts.at(-1)!;
+      const extMatch = fileName.match(/\.(jpe?g|png|gif|webp|bmp)$/i);
+      if (!extMatch) return null;
+      const ext = extMatch[1]!;
+      const stem = fileName.slice(0, -extMatch[0].length);
+      if (!year || !date || !stem) return null;
+
+      // The view page's md5 token is signed for the requested extension —
+      // fastpic serves .jpeg and .jpg from the same stem as distinct files,
+      // so a mismatched extension here produces a token whose big-image
+      // URL 404s. Preserve the original extension rather than assuming .jpg.
+      return `https://fastpic.org/view/${hostMatch[1]}/${year}/${date}/${stem}.${ext}.html`;
+    } catch {
       return null;
     }
   }
@@ -99,9 +141,9 @@ export class FastpicResolver implements ImageHostResolver {
   }
 
   /**
-   * Fetch a page's HTML content. fetch() follows redirects automatically.
-   * Upgrades HTTP to HTTPS to match manifest host_permissions so Chrome
-   * bypasses CORS restrictions for the background service worker.
+   * Fetch a page's HTML content. Upgrades HTTP to HTTPS to match manifest
+   * host_permissions so Chrome bypasses CORS restrictions for the background
+   * service worker.
    */
   private async fetchPage(url: string): Promise<string> {
     const parsed = new URL(url);
