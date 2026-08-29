@@ -1,4 +1,5 @@
 import type { ImageHostResolver } from "./types";
+import { loadPageHtml } from "../tabLoader";
 
 export class ImgboxResolver implements ImageHostResolver {
   name = "imgbox";
@@ -61,13 +62,6 @@ export class ImgboxResolver implements ImageHostResolver {
   }
 
   private async fetchPage(url: string): Promise<string> {
-    const res = await fetch(url, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-      },
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
-    return res.text();
+    return loadPageHtml(url);
   }
 }

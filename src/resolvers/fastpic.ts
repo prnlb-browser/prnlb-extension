@@ -1,4 +1,5 @@
 import type { ImageHostResolver } from "./types";
+import { loadPageHtml } from "../tabLoader";
 
 /**
  * Resolver for images hosted on fastpic.org.
@@ -141,9 +142,9 @@ export class FastpicResolver implements ImageHostResolver {
   }
 
   /**
-   * Fetch a page's HTML content. Upgrades HTTP to HTTPS to match manifest
-   * host_permissions so Chrome bypasses CORS restrictions for the background
-   * service worker.
+   * Fetch a page's HTML content by loading it in a real (background) browser
+   * tab and extracting the rendered DOM. Upgrades HTTP to HTTPS to match
+   * manifest host_permissions.
    */
   private async fetchPage(url: string): Promise<string> {
     const parsed = new URL(url);
@@ -151,12 +152,6 @@ export class FastpicResolver implements ImageHostResolver {
       parsed.protocol = "https:";
       url = parsed.toString();
     }
-    const res = await fetch(url, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-      },
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
-    return res.text();
+    return loadPageHtml(url);
   }
 }
