@@ -16,16 +16,25 @@ browser.action.onClicked.addListener((tab) => {
 // ===== Message proxy: content script sends images, background resolves them =====
 
 browser.runtime.onMessage.addListener(
-  (message: ExtensionMessage, _sender) => {
+  (message: ExtensionMessage, sender) => {
     if (message.action === "resolveImages") {
       const images = message.images;
       if (!Array.isArray(images) || images.length === 0) {
         return Promise.resolve({ images: [] });
       }
 
-      return resolverRegistry.resolveImages(images).then((resolved) => {
-        return { images: resolved };
-      });
+      const senderTabId = sender.tab?.id;
+
+      return resolverRegistry
+        .resolveImages(images, (p) => {
+          if (senderTabId === undefined) return;
+          browser.tabs
+            .sendMessage(senderTabId, { action: "resolveProgress", ...p })
+            .catch(() => {});
+        })
+        .then((resolved) => {
+          return { images: resolved };
+        });
     }
   }
 );

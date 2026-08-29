@@ -256,7 +256,19 @@ async function loadAndShowImages(): Promise<void> {
   title.textContent = `Screenshots (${scrapedImages.length} found)`;
   progressText.textContent = `Sending ${scrapedImages.length} images to background for resolution...`;
   progressBarContainer.hidden = false;
-  progressBar.style.width = "30%";
+  progressBar.style.width = "5%";
+
+  // Listen for progress updates from the background script while it resolves images
+  const progressListener = (message: ExtensionMessage) => {
+    if (message.action !== "resolveProgress") return;
+    const { current, total, message: msg } = message;
+    progressText.textContent = msg;
+    if (total > 0) {
+      const pct = Math.max(5, Math.round((current / total) * 100));
+      progressBar.style.width = `${pct}%`;
+    }
+  };
+  browser.runtime.onMessage.addListener(progressListener);
 
   // 2. Send to background service worker for CORS-free resolution
   try {
@@ -296,6 +308,8 @@ async function loadAndShowImages(): Promise<void> {
   } catch (err) {
     progressText.textContent = `Error: ${(err as Error).message}`;
     progressBarContainer.hidden = true;
+  } finally {
+    browser.runtime.onMessage.removeListener(progressListener);
   }
 }
 
