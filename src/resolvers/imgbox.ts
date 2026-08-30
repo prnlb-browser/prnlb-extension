@@ -46,6 +46,18 @@ export class ImgboxResolver implements ImageHostResolver {
   private async resolveFromPage(pageUrl: string): Promise<string | null> {
     const html = await this.fetchPage(pageUrl);
     if (!html) return null;
+    const fullUrl = this.extractFullImageUrl(html);
+    if (!fullUrl) {
+      console.error(`ImgboxResolver: Could not extract full-size image from ${pageUrl}`);
+    }
+    return fullUrl;
+  }
+
+  /**
+   * Extract the full-size image URL from the imgbox page HTML, or null if
+   * it isn't present yet.
+   */
+  private extractFullImageUrl(html: string): string | null {
     const normalizedHtml = html.replace(/\s+/g, " ");
     const imageContentRegex = /class="image-content"[^>]*>.*?<img[^>]+src=["'](https:\/\/images\d*\.imgbox\.com\/[^"']+)["']/is;
     const match = normalizedHtml.match(imageContentRegex);
@@ -57,11 +69,17 @@ export class ImgboxResolver implements ImageHostResolver {
     if (fallbackMatch) {
       return fallbackMatch[1]!;
     }
-    console.error(`ImgboxResolver: Could not extract full-size image from ${pageUrl}`);
     return null;
   }
 
+  /**
+   * Loads the page in a background tab, returning as soon as the full-size
+   * image markup is present in the DOM rather than waiting for the whole
+   * page (ads/trackers/etc.) to finish loading.
+   */
   private async fetchPage(url: string): Promise<string> {
-    return loadPageHtml(url);
+    return loadPageHtml(url, {
+      isReady: (html) => this.extractFullImageUrl(html) !== null,
+    });
   }
 }

@@ -145,6 +145,10 @@ export class FastpicResolver implements ImageHostResolver {
    * Fetch a page's HTML content by loading it in a real (background) browser
    * tab and extracting the rendered DOM. Upgrades HTTP to HTTPS to match
    * manifest host_permissions.
+   *
+   * Rather than waiting for the tab to fully finish loading (slow — the
+   * view page pulls in ads/trackers/etc.), we poll the DOM as it renders
+   * and return as soon as the big-image markup we need is present.
    */
   private async fetchPage(url: string): Promise<string> {
     const parsed = new URL(url);
@@ -152,6 +156,8 @@ export class FastpicResolver implements ImageHostResolver {
       parsed.protocol = "https:";
       url = parsed.toString();
     }
-    return loadPageHtml(url);
+    return loadPageHtml(url, {
+      isReady: (html) => this.extractBigImageUrl(html) !== null,
+    });
   }
 }
