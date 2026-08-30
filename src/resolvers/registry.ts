@@ -36,7 +36,7 @@ class ResolverRegistry {
    */
   async resolveImages(
     images: ScrapedImage[],
-    onProgress?: (p: { phase: string; message: string; current: number; total: number }) => void,
+    onProgress?: (p: { phase: string; message: string; current: number; total: number; image?: ResolvedImage }) => void,
   ): Promise<ResolvedImage[]> {
     const results: ResolvedImage[] = [];
     const total = images.length;
@@ -52,12 +52,23 @@ class ResolverRegistry {
 
       const resolvedUrl = await resolver.resolve(img.resolveUrl);
       if (resolvedUrl) {
-        results.push({
+        const resolved: ResolvedImage = {
           originalUrl: img.resolveUrl,
           thumbnailUrl: img.thumbnailUrl,
           resolvedUrl,
           resolver: resolver.name,
-        });
+        };
+        results.push(resolved);
+
+        if (onProgress) {
+          onProgress({
+            phase: "resolving",
+            message: `Resolved ${i + 1}/${total}`,
+            current: i + 1,
+            total,
+            image: resolved,
+          });
+        }
       }
     }
 

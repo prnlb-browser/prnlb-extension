@@ -258,14 +258,49 @@ async function loadAndShowImages(): Promise<void> {
   progressBarContainer.hidden = false;
   progressBar.style.width = "5%";
 
+  // Reset carousel state and thumbnail strip; images will be appended as
+  // each one is resolved, so the user can browse/view them immediately
+  // instead of waiting for the whole batch to finish.
+  carouselImages = [];
+  carouselIndex = 0;
+  thumbsContainer.innerHTML = "";
+
   // Listen for progress updates from the background script while it resolves images
   const progressListener = (message: ExtensionMessage) => {
     if (message.action !== "resolveProgress") return;
-    const { current, total, message: msg } = message;
+    const { current, total, message: msg, image } = message;
     progressText.textContent = msg;
     if (total > 0) {
       const pct = Math.max(5, Math.round((current / total) * 100));
       progressBar.style.width = `${pct}%`;
+    }
+
+    if (image) {
+      const isFirst = carouselImages.length === 0;
+      const index = carouselImages.length;
+      carouselImages.push(image);
+
+      const thumb = document.createElement("img");
+      thumb.src = image.thumbnailUrl;
+      thumb.alt = `Thumb ${index + 1}`;
+      thumb.loading = "lazy";
+      thumb.style.cssText =
+        "height:40px;width:auto;border-radius:4px;border:2px solid #444;cursor:pointer;opacity:0.5;transition:all 0.15s;flex-shrink:0;";
+      thumb.onclick = () => showImage(index);
+      thumbsContainer.appendChild(thumb);
+
+      title.textContent = `Screenshots (${carouselImages.length}/${total} resolved)`;
+
+      // Show the very first resolved image right away instead of making
+      // the user wait for the whole batch (or the loading spinner) to finish.
+      if (isFirst) showImage(0);
+      else {
+        // Keep the counter/nav buttons in sync as more images arrive.
+        const counter = document.getElementById("__prnlb_counter")!;
+        const next = document.getElementById("__prnlb_next") as HTMLButtonElement;
+        counter.textContent = `${carouselIndex + 1} / ${carouselImages.length}`;
+        next.disabled = carouselIndex === carouselImages.length - 1;
+      }
     }
   };
   browser.runtime.onMessage.addListener(progressListener);
@@ -289,22 +324,10 @@ async function loadAndShowImages(): Promise<void> {
     carouselImages = resolved;
     title.textContent = `Screenshots (${resolved.length} resolved)`;
 
-    // 3. Render thumbnails
-    thumbsContainer.innerHTML = "";
-    resolved.forEach((img, i) => {
-      const thumb = document.createElement("img");
-      thumb.src = img.thumbnailUrl;
-      thumb.alt = `Thumb ${i + 1}`;
-      thumb.loading = "lazy";
-      thumb.style.cssText =
-        "height:40px;width:auto;border-radius:4px;border:2px solid #444;cursor:pointer;opacity:0.5;transition:all 0.15s;flex-shrink:0;";
-      thumb.onclick = () => showImage(i);
-      thumbsContainer.appendChild(thumb);
-    });
-
-    // 4. Show first image
+    // 4. Show first image (in case none were shown progressively, e.g. if
+    // resolveProgress messages weren't received for some reason).
     progressBar.style.width = "100%";
-    showImage(0);
+    showImage(carouselIndex);
   } catch (err) {
     progressText.textContent = `Error: ${(err as Error).message}`;
     progressBarContainer.hidden = true;

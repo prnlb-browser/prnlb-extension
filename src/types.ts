@@ -1,4 +1,4 @@
-import type { ScrapedImage } from "./resolvers/types";
+import type { ResolvedImage, ScrapedImage } from "./resolvers/types";
 
 export type ExtensionMessage =
   | { action: "showCarousel" }
@@ -9,4 +9,6 @@ export type ExtensionMessage =
       message: string;
       current: number;
       total: number;
+      /** The image that was just resolved, if any, so the UI can show it immediately. */
+      image?: ResolvedImage;
     };
