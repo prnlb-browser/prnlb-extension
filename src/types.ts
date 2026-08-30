@@ -3,6 +3,7 @@ import type { ResolvedImage, ScrapedImage } from "./resolvers/types";
 export type ExtensionMessage =
   | { action: "showCarousel" }
   | { action: "resolveImages"; images: ScrapedImage[] }
+  | { action: "abortResolution" }
   | {
       action: "resolveProgress";
       phase: string;

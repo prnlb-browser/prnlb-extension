@@ -16,8 +16,11 @@ export interface ImageHostResolver {
   /**
    * Resolve a thumbnail/post image URL to its full-size version.
    * Returns the full-size image URL or null if resolution fails.
+   *
+   * @param signal Optional AbortSignal that is triggered if the resolution
+   * request should be cancelled early (e.g. the initiating tab was closed).
    */
-  resolve(url: string): Promise<string | null>;
+  resolve(url: string, signal?: AbortSignal): Promise<string | null>;
 }
 
 /**

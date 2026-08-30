@@ -15,6 +15,13 @@ export interface LoadPageHtmlOptions {
    * every subresource on the page has loaded.
    */
   isReady?: (html: string) => boolean;
+  /**
+   * Optional AbortSignal to cancel loading early (e.g. when the tab that
+   * initiated the resolution request has been closed). When aborted, the
+   * background tab created for loading is closed and the returned promise
+   * rejects with an AbortError.
+   */
+  signal?: AbortSignal;
 }
 
 /**
@@ -31,14 +38,16 @@ export async function loadPageHtml(
   url: string,
   options: LoadPageHtmlOptions = {}
 ): Promise<string> {
-  const { timeoutMs = 15000, pollIntervalMs = 200, isReady } = options;
+  const { timeoutMs = 15000, pollIntervalMs = 200, isReady, signal } = options;
+
+  if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
 
   const tab = await browser.tabs.create({ url, active: false });
   const tabId = tab.id;
   if (tabId === undefined) throw new Error(`Failed to create tab for ${url}`);
 
   try {
-    return await waitForHtml(tabId, url, { timeoutMs, pollIntervalMs, isReady });
+    return await waitForHtml(tabId, url, { timeoutMs, pollIntervalMs, isReady, signal });
   } finally {
     await browser.tabs.remove(tabId).catch(() => {});
   }
@@ -73,7 +82,13 @@ async function extractHtml(tabId: number): Promise<string | null> {
 function waitForHtml(
   tabId: number,
   targetUrl: string,
-  { timeoutMs, pollIntervalMs, isReady }: Required<Omit<LoadPageHtmlOptions, "isReady">> & Pick<LoadPageHtmlOptions, "isReady">
+  {
+    timeoutMs,
+    pollIntervalMs,
+    isReady,
+    signal,
+  }: Required<Omit<LoadPageHtmlOptions, "isReady" | "signal">> &
+    Pick<LoadPageHtmlOptions, "isReady" | "signal">
 ): Promise<string> {
   const targetOrigin = safeOrigin(targetUrl);
 
@@ -93,27 +108,33 @@ function waitForHtml(
     let pollTimer: ReturnType<typeof setTimeout> | undefined;
 
     const timer = setTimeout(() => {
-      finish(reject, new Error(`Timed out waiting for tab ${tabId} to load`));
+      finishErr(new Error(`Timed out waiting for tab ${tabId} to load`));
     }, timeoutMs);
+
+    function onAbort() {
+      finishErr(new DOMException("Aborted", "AbortError"));
+    }
+    signal?.addEventListener("abort", onAbort);
 
     function cleanup() {
       clearTimeout(timer);
       if (pollTimer) clearTimeout(pollTimer);
       browser.tabs.onUpdated.removeListener(listener);
+      signal?.removeEventListener("abort", onAbort);
     }
 
-    function finish(
-      settle: (value: string) => void | ((reason: Error) => void),
-      value: string | Error
-    ) {
+    function finishOk(value: string) {
       if (settled) return;
       settled = true;
       cleanup();
-      if (value instanceof Error) {
-        (settle as (reason: Error) => void)(value);
-      } else {
-        (settle as (value: string) => void)(value);
-      }
+      resolve(value);
+    }
+
+    function finishErr(reason: Error) {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      reject(reason);
     }
 
     async function poll() {
@@ -124,17 +145,17 @@ function waitForHtml(
 
       if (html !== null) {
         if (isReady?.(html)) {
-          finish(resolve, html);
+          finishOk(html);
           return;
         }
         if (pageComplete) {
           // Fully loaded but never matched isReady — return what we have.
-          finish(resolve, html);
+          finishOk(html);
           return;
         }
       } else if (pageComplete) {
         // Fully loaded but couldn't extract HTML at all.
-        finish(reject, new Error(`Failed to extract HTML from tab for ${targetUrl}`));
+        finishErr(new Error(`Failed to extract HTML from tab for ${targetUrl}`));
         return;
       }
 
@@ -174,8 +195,8 @@ function waitForHtml(
         if (settled) return;
         if (pageComplete) {
           extractHtml(tabId).then((html) => {
-            if (html !== null) finish(resolve, html);
-            else finish(reject, new Error(`Failed to extract HTML from tab for ${targetUrl}`));
+            if (html !== null) finishOk(html);
+            else finishErr(new Error(`Failed to extract HTML from tab for ${targetUrl}`));
           });
         } else {
           pollTimer = setTimeout(waitForComplete, pollIntervalMs);

@@ -30,12 +30,12 @@ export class FastpicResolver implements ImageHostResolver {
     }
   }
 
-  async resolve(url: string): Promise<string | null> {
+  async resolve(url: string, signal?: AbortSignal): Promise<string | null> {
     try {
       const pageUrl = this.buildViewPageUrl(url);
       if (!pageUrl) return null;
 
-      const html = await this.fetchPage(pageUrl);
+      const html = await this.fetchPage(pageUrl, signal);
       const bigUrl = this.extractBigImageUrl(html);
       if (bigUrl) return bigUrl;
 
@@ -150,7 +150,7 @@ export class FastpicResolver implements ImageHostResolver {
    * view page pulls in ads/trackers/etc.), we poll the DOM as it renders
    * and return as soon as the big-image markup we need is present.
    */
-  private async fetchPage(url: string): Promise<string> {
+  private async fetchPage(url: string, signal?: AbortSignal): Promise<string> {
     const parsed = new URL(url);
     if (parsed.protocol === "http:") {
       parsed.protocol = "https:";
@@ -158,6 +158,7 @@ export class FastpicResolver implements ImageHostResolver {
     }
     return loadPageHtml(url, {
       isReady: (html) => this.extractBigImageUrl(html) !== null,
+      signal,
     });
   }
 }

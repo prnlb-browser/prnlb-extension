@@ -193,6 +193,8 @@ function closeCarousel(): void {
   if (overlay) overlay.remove();
   carouselImages = [];
   carouselIndex = 0;
+  // Tell the background script to stop resolving images
+  browser.runtime.sendMessage({ action: "abortResolution" }).catch(() => {});
 }
 
 function showImage(index: number): void {

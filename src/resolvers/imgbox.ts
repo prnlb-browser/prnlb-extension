@@ -16,14 +16,14 @@ export class ImgboxResolver implements ImageHostResolver {
     }
   }
 
-  async resolve(url: string): Promise<string | null> {
+  async resolve(url: string, signal?: AbortSignal): Promise<string | null> {
     try {
       const parsed = new URL(url);
       if (parsed.hostname.match(/^thumbs\d*\.imgbox\.com$/i)) {
         return this.resolveThumbnail(url);
       }
       if (parsed.hostname === "imgbox.com") {
-        return await this.resolveFromPage(url);
+        return await this.resolveFromPage(url, signal);
       }
       if (parsed.hostname.match(/^images\d*\.imgbox\.com$/i)) {
         return url;
@@ -43,8 +43,8 @@ export class ImgboxResolver implements ImageHostResolver {
     return parsed.toString();
   }
 
-  private async resolveFromPage(pageUrl: string): Promise<string | null> {
-    const html = await this.fetchPage(pageUrl);
+  private async resolveFromPage(pageUrl: string, signal?: AbortSignal): Promise<string | null> {
+    const html = await this.fetchPage(pageUrl, signal);
     if (!html) return null;
     const fullUrl = this.extractFullImageUrl(html);
     if (!fullUrl) {
@@ -77,9 +77,10 @@ export class ImgboxResolver implements ImageHostResolver {
    * image markup is present in the DOM rather than waiting for the whole
    * page (ads/trackers/etc.) to finish loading.
    */
-  private async fetchPage(url: string): Promise<string> {
+  private async fetchPage(url: string, signal?: AbortSignal): Promise<string> {
     return loadPageHtml(url, {
       isReady: (html) => this.extractFullImageUrl(html) !== null,
+      signal,
     });
   }
 }
