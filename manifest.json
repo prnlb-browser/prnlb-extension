@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "PRNLB Viewer",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "View screenshots from Pornolab topic pages in a carousel.",
   "browser_specific_settings": {
     "gecko": {
@@ -15,7 +15,9 @@
     "*://*.fastpic.org/*",
     "*://fastpic.org/*",
     "https://*.imgbox.com/*",
-    "https://imgbox.com/*"
+    "https://imgbox.com/*",
+    "https://*.turboimagehost.com/*",
+    "https://turboimagehost.com/*"
   ],
   "action": {
     "default_title": "View screenshots",

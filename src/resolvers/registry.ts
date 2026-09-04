@@ -1,6 +1,7 @@
 import type { ImageHostResolver, ResolvedImage, ScrapedImage } from "./types";
 import { FastpicResolver } from "./fastpic";
 import { ImgboxResolver } from "./imgbox";
+import { TurboImageHostResolver } from "./turboimagehost";
 
 /**
  * Registry of all available image host resolvers.
@@ -13,6 +14,7 @@ class ResolverRegistry {
     // Register built-in resolvers
     this.register(new FastpicResolver());
     this.register(new ImgboxResolver());
+    this.register(new TurboImageHostResolver());
   }
 
   /**
