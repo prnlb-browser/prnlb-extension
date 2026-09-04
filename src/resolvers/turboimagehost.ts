@@ -35,6 +35,10 @@ export class TurboImageHostResolver implements ImageHostResolver {
         // loader tab to the foreground so the user can complete it, then keep
         // polling that tab for the image to appear.
         onTimeout: async (tabId) => {
+          const tab = await browser.tabs.get(tabId);
+          if (tab.windowId !== undefined) {
+            await browser.windows.update(tab.windowId, { focused: true });
+          }
           await browser.tabs.update(tabId, { active: true });
         },
         timeoutAfterTimeoutMs: 120000,
