@@ -1,5 +1,6 @@
 import type { ImageHostResolver } from "./types";
 import { loadPageHtml } from "../tabLoader";
+import browser from "webextension-polyfill";
 
 /**
  * Resolver for TurboImageHost image pages.
@@ -30,6 +31,14 @@ export class TurboImageHostResolver implements ImageHostResolver {
       const html = await loadPageHtml(url, {
         isReady: (pageHtml) => this.extractFullImageUrl(pageHtml) !== null,
         signal,
+        // Cloudflare's human check is rendered in this same page. Bring the
+        // loader tab to the foreground so the user can complete it, then keep
+        // polling that tab for the image to appear.
+        onTimeout: async (tabId) => {
+          await browser.tabs.update(tabId, { active: true });
+        },
+        timeoutAfterTimeoutMs: 120000,
+        keepTabOpenOnTimeout: true,
       });
       return this.extractFullImageUrl(html);
     } catch (err) {

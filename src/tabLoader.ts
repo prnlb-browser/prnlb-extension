@@ -1,7 +1,7 @@
 import browser from "webextension-polyfill";
 
 export interface LoadPageHtmlOptions {
-  /** Max time to wait before giving up entirely (default 15000ms). */
+  /** Max time to wait before the optional timeout handler runs (default 15000ms). */
   timeoutMs?: number;
   /** How often to poll the DOM for early-readiness while the page loads (default 200ms). */
   pollIntervalMs?: number;
@@ -22,6 +22,18 @@ export interface LoadPageHtmlOptions {
    * rejects with an AbortError.
    */
   signal?: AbortSignal;
+  /**
+   * Called when the initial timeout expires. A resolver can use this to
+   * activate a page that needs user interaction, such as a human check.
+   */
+  onTimeout?: (tabId: number) => void | Promise<void>;
+  /**
+   * Additional time to keep polling after onTimeout has run. This gives the
+   * user time to complete an interaction in the active tab.
+   */
+  timeoutAfterTimeoutMs?: number;
+  /** Leave the loader tab open if the additional wait also times out. */
+  keepTabOpenOnTimeout?: boolean;
 }
 
 /**
@@ -38,7 +50,15 @@ export async function loadPageHtml(
   url: string,
   options: LoadPageHtmlOptions = {}
 ): Promise<string> {
-  const { timeoutMs = 15000, pollIntervalMs = 200, isReady, signal } = options;
+  const {
+    timeoutMs = 15000,
+    pollIntervalMs = 200,
+    isReady,
+    signal,
+    onTimeout,
+    timeoutAfterTimeoutMs = 0,
+    keepTabOpenOnTimeout = false,
+  } = options;
 
   if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
 
@@ -46,10 +66,23 @@ export async function loadPageHtml(
   const tabId = tab.id;
   if (tabId === undefined) throw new Error(`Failed to create tab for ${url}`);
 
+  let keepTabOpen = false;
   try {
-    return await waitForHtml(tabId, url, { timeoutMs, pollIntervalMs, isReady, signal });
+    return await waitForHtml(tabId, url, {
+      timeoutMs,
+      pollIntervalMs,
+      isReady,
+      signal,
+      onTimeout,
+      timeoutAfterTimeoutMs,
+      onFinalTimeout: () => {
+        keepTabOpen = keepTabOpenOnTimeout;
+      },
+    });
   } finally {
-    await browser.tabs.remove(tabId).catch(() => {});
+    if (!keepTabOpen) {
+      await browser.tabs.remove(tabId).catch(() => {});
+    }
   }
 }
 
@@ -74,7 +107,8 @@ async function extractHtml(tabId: number): Promise<string | null> {
  *    still loading (fast path), or
  *  - the tab reaches a genuine "complete" load state (fallback — returns
  *    whatever HTML is available at that point), or
- *  - `timeoutMs` elapses (rejects).
+ *  - `timeoutMs` elapses (or the optional post-timeout wait elapses) and the
+ *    page still has not become ready (rejects).
  *
  * If no `isReady` predicate is supplied, this simply waits for the tab to
  * finish loading before extracting the HTML once.
@@ -87,8 +121,18 @@ function waitForHtml(
     pollIntervalMs,
     isReady,
     signal,
-  }: Required<Omit<LoadPageHtmlOptions, "isReady" | "signal">> &
-    Pick<LoadPageHtmlOptions, "isReady" | "signal">
+    onTimeout,
+    timeoutAfterTimeoutMs,
+    onFinalTimeout,
+  }: {
+    timeoutMs: number;
+    pollIntervalMs: number;
+    isReady?: (html: string) => boolean;
+    signal?: AbortSignal;
+    onTimeout?: (tabId: number) => void | Promise<void>;
+    timeoutAfterTimeoutMs: number;
+    onFinalTimeout?: () => void;
+  }
 ): Promise<string> {
   const targetOrigin = safeOrigin(targetUrl);
 
@@ -107,9 +151,8 @@ function waitForHtml(
     let pageComplete = false;
     let pollTimer: ReturnType<typeof setTimeout> | undefined;
 
-    const timer = setTimeout(() => {
-      finishErr(new Error(`Timed out waiting for tab ${tabId} to load`));
-    }, timeoutMs);
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let timeoutHandled = false;
 
     function onAbort() {
       finishErr(new DOMException("Aborted", "AbortError"));
@@ -137,6 +180,32 @@ function waitForHtml(
       reject(reason);
     }
 
+    function finishTimeout() {
+      onFinalTimeout?.();
+      finishErr(new Error(`Timed out waiting for tab ${tabId} to load`));
+    }
+
+    function armTimeout(durationMs: number) {
+      timer = setTimeout(() => {
+        if (timeoutHandled || !onTimeout) {
+          finishTimeout();
+          return;
+        }
+
+        timeoutHandled = true;
+        Promise.resolve(onTimeout(tabId))
+          .then(() => {
+            if (settled) return;
+            if (timeoutAfterTimeoutMs > 0) {
+              armTimeout(timeoutAfterTimeoutMs);
+            } else {
+              finishTimeout();
+            }
+          })
+          .catch((err) => finishErr(err instanceof Error ? err : new Error(String(err))));
+      }, durationMs);
+    }
+
     async function poll() {
       if (settled) return;
 
@@ -148,12 +217,12 @@ function waitForHtml(
           finishOk(html);
           return;
         }
-        if (pageComplete) {
+        if (pageComplete && !onTimeout) {
           // Fully loaded but never matched isReady — return what we have.
           finishOk(html);
           return;
         }
-      } else if (pageComplete) {
+      } else if (pageComplete && !onTimeout) {
         // Fully loaded but couldn't extract HTML at all.
         finishErr(new Error(`Failed to extract HTML from tab for ${targetUrl}`));
         return;
@@ -174,6 +243,8 @@ function waitForHtml(
     }
 
     browser.tabs.onUpdated.addListener(listener);
+
+    armTimeout(timeoutMs);
 
     // Handle the case where the tab has already finished loading before
     // the listener was attached.
