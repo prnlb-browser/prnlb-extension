@@ -2,6 +2,8 @@
 
 A browser extension (Chrome & Firefox) that extracts image URLs from Pornolab topic pages and displays them in a carousel overlay.
 
+For more features, see [PRNLB Browser](https://github.com/prnlb-browser), a standalone app that goes beyond the capabilities of this extension.
+
 ![Screenshot](.github/assets/screenshot.png)
 
 ## Development
@@ -58,11 +60,11 @@ The extension will appear in your toolbar. Navigate to a Pornolab topic page and
 
 After making changes, run `npm run build` again and click **Reload** next to the extension entry on the debugging page.
 
-> **Note:** Temporary add-ons are removed when Firefox is restarted. For permanent installation, package the extension as a `.xpi` file and sign it via [addons.mozilla.org](https://addons.mozilla.org/).
+> **Note:** Temporary add-ons are removed when Firefox is restarted. For a permanent installation, download the signed extension distribution from [Releases](https://github.com/prnlb-browser/prnlb-extension/releases).
 
 ## Download
 
-You can download the latest distributive from [Releases](https://github.com/prnlb-browser/prnlb-extension/releases).
+You can download the latest signed extension distribution from [Releases](https://github.com/prnlb-browser/prnlb-extension/releases). Install the signed distribution to keep the extension installed after restarting Firefox.
 
 ## Support
 
@@ -74,6 +76,8 @@ ETH — `0x87c7CB3d62Bc70A19638A01064B2028fB89E37BF`
 ## PRNLB Viewer (Русский)
 
 Расширение для браузеров Chrome и Firefox, которое извлекает URL изображений со страниц тем Pornolab и отображает их в карусели.
+
+Больше возможностей доступно в [PRNLB Browser](https://github.com/prnlb-browser) — отдельном приложении, функциональность которого шире, чем у этого расширения.
 
 ### Установка в Chrome
 
@@ -98,11 +102,11 @@ ETH — `0x87c7CB3d62Bc70A19638A01064B2028fB89E37BF`
 
 После внесения изменений выполните `npm run build` и нажмите **Перезагрузить** рядом с записью расширения на странице отладки.
 
-> **Примечание:** Временные дополнения удаляются при перезапуске Firefox. Для постоянной установки упакуйте директорию `dist/` в `.xpi` файл и подпишите через [addons.mozilla.org](https://addons.mozilla.org/).
+> **Примечание:** Временные дополнения удаляются при перезапуске Firefox. Для постоянной установки скачайте подписанный дистрибутив расширения со страницы [Releases](https://github.com/prnlb-browser/prnlb-extension/releases).
 
 ### Скачать
 
-Последнюю версию расширения можно скачать на странице [Releases](https://github.com/prnlb-browser/prnlb-extension/releases).
+Последний подписанный дистрибутив расширения можно скачать на странице [Releases](https://github.com/prnlb-browser/prnlb-extension/releases). После установки подписанный дистрибутив не будет удалён при перезапуске Firefox.
 
 ### Поддержка
 
