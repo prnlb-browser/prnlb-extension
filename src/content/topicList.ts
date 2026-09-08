@@ -77,10 +77,11 @@ function findTopicListTables(): HTMLTableElement[] {
 }
 
 function addTopicListOptionsIcon(table: HTMLTableElement): void {
-  const host = table.parentElement ?? table;
-  if (host.querySelector(":scope > .__prnlb_list_options")) return;
+  if (table.querySelector(":scope > .__prnlb_list_options")) return;
 
-  if (getComputedStyle(host).position === "static") host.style.position = "relative";
+  if (getComputedStyle(table).position === "static") {
+    table.style.position = "relative";
+  }
 
   const options = document.createElement("button");
   options.type = "button";
@@ -89,13 +90,17 @@ function addTopicListOptionsIcon(table: HTMLTableElement): void {
   options.setAttribute("aria-label", "PRNLB Viewer options");
   options.style.cssText =
     "position:absolute;top:4px;left:4px;z-index:5;width:28px;height:28px;padding:3px;border:1px solid rgba(0,0,0,.25);border-radius:4px;background:rgba(255,255,255,.9);cursor:pointer;opacity:.85;";
+  options.onclick = () => {
+    topicListModeActive = false;
+    void activateTopicListMode();
+  };
 
   const icon = document.createElement("img");
   icon.src = browser.runtime.getURL("icon.png");
   icon.alt = "";
   icon.style.cssText = "display:block;width:100%;height:100%;object-fit:contain;";
   options.appendChild(icon);
-  host.appendChild(options);
+  table.appendChild(options);
 }
 
 function findPreviewCell(row: HTMLTableRowElement): HTMLTableCellElement | null {
@@ -107,8 +112,11 @@ function createTopicListEntries(table: HTMLTableElement): TopicListEntry[] {
   const entries: TopicListEntry[] = [];
   const seenRows = new Set<HTMLTableRowElement>();
 
+  // `torTopic` is the actual topic title link in forum/tracker rows. The
+  // preceding newest-reply icon also points at viewtopic.php, so do not use
+  // a broad href-only selector here.
   for (const link of table.querySelectorAll<HTMLAnchorElement>(
-    "a.med.tLink.bold.t-vis[href*='viewtopic.php'], a.topictitle.tt-text[href*='viewtopic.php']",
+    "a.med.tLink[href*='viewtopic.php'], a.topictitle[href*='viewtopic.php'], a.torTopic[href*='viewtopic.php']",
   )) {
     const row = link.closest("tr");
     if (!(row instanceof HTMLTableRowElement) || seenRows.has(row)) continue;
