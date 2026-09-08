@@ -6,6 +6,7 @@ It has two operating modes:
 
 - When enabled (the default), a topic page automatically gets a 📷 button over the first post image. Clicking it opens the screenshot carousel.
 - On a forum, tracker, or search-result topic list, the extension automatically adds a post-image preview and a screenshot button to each topic row. The button opens the same carousel for that topic.
+- Topic-list rows can memorize topics. Memorized topics, including their image, cast, and clickable title, are available from the Memorized Topics options tab.
 - The toolbar button is an ON/OFF toggle. Turning it off closes the current viewer and restores the original topic-list markup; turning it on immediately activates the current supported Pornolab page. The setting is remembered across page loads.
 - The topic-list options include an Actresses catalogue with aliases, favorites, profile-picture URLs, and Boobpedia/IAFD lookup. Actress search buttons open a new Pornolab search tab, and catalogue matches can highlight topic rows.
 
@@ -61,6 +62,7 @@ The build bundles `src/background.ts` and `src/content.ts`, then copies the mani
 - `src/resolvers/` contains image-host-specific resolvers.
 - `src/content/carousel.ts` implements the topic-page carousel.
 - `src/content/topicList.ts` implements previews and buttons in topic-list tables.
+- `src/content/memorizedTopics.ts` implements the local memorized-topic store.
 - `src/content/actresses.ts` implements the local actress catalogue and edit dialog.
 - `src/tabLoader.ts` loads rendered pages in temporary tabs and supports readiness polling and abort signals.
 

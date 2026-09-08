@@ -6,10 +6,15 @@ import {
   setHideHiddenTopics,
 } from "./hiddenTopics";
 import { disposeActressesPanel, populateActressesPanel } from "./actresses";
+import {
+  getMemorizedTopics,
+  removeMemorizedTopic,
+  type MemorizedTopic,
+} from "./memorizedTopics";
 
 const DIALOG_ID = "__prnlb_options_dialog";
 
-type OptionsTab = "actresses" | "options";
+type OptionsTab = "actresses" | "options" | "memorized";
 
 export function openOptionsDialog(): void {
   const existing = document.getElementById(DIALOG_ID);
@@ -89,9 +94,12 @@ export function openOptionsDialog(): void {
   }
 
   createTab("actresses", "Actresses");
+  createTab("memorized", "Memorized Topics");
   createTab("options", "Options");
   const actressesPanel = createPanel("actresses", "Actress settings");
   populateActressesPanel(actressesPanel);
+  const memorizedPanel = createPanel("memorized", "Memorized topics");
+  populateMemorizedTopicsPanel(memorizedPanel);
   const optionsPanel = createPanel("options", "Viewer settings");
   populateOptionsPanel(optionsPanel);
 
@@ -250,6 +258,164 @@ function populateOptionsPanel(panel: HTMLDivElement): void {
         clearButton.disabled = false;
       });
   });
+}
+
+function safeMemorizedTopicUrl(value: string): string | null {
+  try {
+    const url = new URL(value);
+    if (
+      url.protocol !== "https:" ||
+      url.hostname !== "pornolab.net" ||
+      url.pathname !== "/forum/viewtopic.php"
+    ) {
+      return null;
+    }
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
+function populateMemorizedTopicsPanel(panel: HTMLDivElement): void {
+  panel.textContent = "";
+  panel.style.color = "#333";
+
+  const section = document.createElement("section");
+  section.style.cssText =
+    "display:flex;flex-direction:column;gap:10px;min-width:0;";
+
+  const heading = document.createElement("h3");
+  heading.textContent = "Memorized Topics";
+  heading.style.cssText = "margin:0;font-size:15px;color:#222;";
+
+  const status = document.createElement("div");
+  status.style.cssText = "min-height:18px;color:#666;font-size:12px;";
+
+  const table = document.createElement("table");
+  table.style.cssText =
+    "width:100%;border-collapse:collapse;table-layout:fixed;font-size:13px;";
+  const colgroup = document.createElement("colgroup");
+  for (const width of ["120px", "25%", "auto", "86px"]) {
+    const col = document.createElement("col");
+    col.style.width = width;
+    colgroup.appendChild(col);
+  }
+  table.appendChild(colgroup);
+
+  const headerRow = document.createElement("tr");
+  for (const label of ["Topic image", "Cast", "Title", ""]) {
+    const cell = document.createElement("th");
+    cell.scope = "col";
+    cell.textContent = label;
+    cell.style.cssText =
+      "padding:7px 6px;border-bottom:2px solid #ddd;text-align:left;color:#555;font-weight:600;";
+    headerRow.appendChild(cell);
+  }
+  const thead = document.createElement("thead");
+  thead.appendChild(headerRow);
+  table.appendChild(thead);
+
+  const body = document.createElement("tbody");
+  table.appendChild(body);
+  section.append(heading, status, table);
+  panel.appendChild(section);
+
+  let topics: MemorizedTopic[] = [];
+
+  function render(): void {
+    body.textContent = "";
+    if (topics.length === 0) {
+      const row = document.createElement("tr");
+      const cell = document.createElement("td");
+      cell.colSpan = 4;
+      cell.textContent = "No memorized topics yet.";
+      cell.style.cssText = "padding:24px 6px;text-align:center;color:#666;";
+      row.appendChild(cell);
+      body.appendChild(row);
+      return;
+    }
+
+    for (const topic of topics) {
+      const row = document.createElement("tr");
+      const imageCell = document.createElement("td");
+      imageCell.style.cssText = "padding:7px 6px;border-bottom:1px solid #eee;";
+      const image = document.createElement("img");
+      image.alt = "Topic image";
+      image.style.cssText =
+        "display:block;width:108px;height:68px;object-fit:contain;background:#f1f1f1;border-radius:3px;";
+      if (topic.imageUrl) {
+        image.src = topic.imageUrl;
+        image.onerror = () => {
+          image.removeAttribute("src");
+          image.alt = "Topic image unavailable";
+        };
+      } else {
+        image.alt = "No topic image";
+      }
+      imageCell.appendChild(image);
+
+      const castCell = document.createElement("td");
+      castCell.textContent = topic.cast || "—";
+      castCell.style.cssText =
+        "padding:7px 6px;border-bottom:1px solid #eee;vertical-align:middle;overflow-wrap:anywhere;";
+
+      const titleCell = document.createElement("td");
+      titleCell.style.cssText =
+        "padding:7px 6px;border-bottom:1px solid #eee;vertical-align:middle;overflow-wrap:anywhere;";
+      const topicUrl = safeMemorizedTopicUrl(topic.topicUrl);
+      if (topicUrl) {
+        const link = document.createElement("a");
+        link.href = topicUrl;
+        link.textContent = topic.title || topicUrl;
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+        link.style.cssText = "color:#315fb4;text-decoration:underline;";
+        titleCell.appendChild(link);
+      } else {
+        titleCell.textContent = topic.title || topic.topicUrl;
+      }
+
+      const actionCell = document.createElement("td");
+      actionCell.style.cssText =
+        "padding:7px 6px;border-bottom:1px solid #eee;text-align:right;vertical-align:middle;";
+      const unmemorize = document.createElement("button");
+      unmemorize.type = "button";
+      unmemorize.textContent = "Remove";
+      unmemorize.title = "Unmemorize topic";
+      unmemorize.setAttribute("aria-label", "Unmemorize topic");
+      unmemorize.style.cssText =
+        "padding:5px 7px;border:1px solid #aaa;border-radius:4px;background:#f7f7f7;color:#222;cursor:pointer;";
+      unmemorize.addEventListener("click", () => {
+        unmemorize.disabled = true;
+        void removeMemorizedTopic(topic.topicUrl)
+          .then((removed) => {
+            if (!removed) {
+              unmemorize.disabled = false;
+              return;
+            }
+            topics = topics.filter((item) => item.topicId !== topic.topicId);
+            render();
+          })
+          .catch(() => {
+            status.textContent = "Could not remove the memorized topic.";
+            unmemorize.disabled = false;
+          });
+      });
+      actionCell.appendChild(unmemorize);
+
+      row.append(imageCell, castCell, titleCell, actionCell);
+      body.appendChild(row);
+    }
+  }
+
+  void getMemorizedTopics()
+    .then((items) => {
+      topics = items;
+      render();
+    })
+    .catch(() => {
+      status.textContent = "Could not load memorized topics.";
+    });
 }
 
 export function closeOptionsDialog(): void {

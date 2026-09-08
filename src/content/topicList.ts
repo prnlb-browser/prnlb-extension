@@ -9,14 +9,22 @@ import {
 } from "./hiddenTopics";
 import { openOptionsDialog } from "./optionsDialog";
 import { requestActressEditor } from "./actresses";
+import {
+  getMemorizedTopics,
+  toggleMemorizedTopic,
+  updateMemorizedTopic,
+} from "./memorizedTopics";
 import { sendMessageSafely } from "./runtimeMessaging";
 
 interface TopicListEntry {
   row: HTMLTableRowElement;
   cell: HTMLTableCellElement;
   topicUrl: string;
+  title: string;
   images: ScrapedImage[];
+  previewUrl: string | null;
   hidden: boolean;
+  memorized: boolean;
   hideHiddenTopics: boolean;
   highlightActresses: boolean;
   cast: string;
@@ -159,8 +167,11 @@ function createTopicListEntries(table: HTMLTableElement): TopicListEntry[] {
       row,
       cell,
       topicUrl,
+      title: link.textContent?.trim() ?? "",
       images: [],
+      previewUrl: null,
       hidden: false,
+      memorized: false,
       hideHiddenTopics: true,
       highlightActresses: false,
       cast: "",
@@ -182,6 +193,7 @@ function prepareTopicListCell(entry: TopicListEntry): {
   preview: HTMLImageElement;
   cast: HTMLDivElement;
   button: HTMLButtonElement;
+  memorizeButton: HTMLButtonElement;
 } {
   entry.cell.innerHTML = "";
   entry.cell.classList.add("__prnlb_topic_preview_cell");
@@ -239,6 +251,16 @@ function prepareTopicListCell(entry: TopicListEntry): {
     "display:flex;flex:0 0 36px;flex-direction:column;align-items:center;gap:5px;";
   actions.appendChild(button);
 
+  const memorizeButton = document.createElement("button");
+  memorizeButton.type = "button";
+  memorizeButton.textContent = "🔖";
+  memorizeButton.style.cssText =
+    "display:block;width:36px;height:32px;box-sizing:border-box;padding:2px;border:1px solid #999;border-radius:4px;background:#f5f5f5;color:#222;font-size:18px;line-height:1;cursor:pointer;";
+  updateMemorizeButton(memorizeButton, entry.memorized);
+  memorizeButton.onclick = () =>
+    void toggleTopicListEntryMemorized(entry, memorizeButton);
+  actions.appendChild(memorizeButton);
+
   const hideButton = document.createElement("button");
   hideButton.type = "button";
   hideButton.textContent = entry.hidden ? "👁️" : "🙈";
@@ -254,7 +276,19 @@ function prepareTopicListCell(entry: TopicListEntry): {
 
   wrapper.append(preview, cast, actions);
   entry.cell.appendChild(wrapper);
-  return { preview, button, cast };
+  return { preview, button, cast, memorizeButton };
+}
+
+function updateMemorizeButton(
+  button: HTMLButtonElement,
+  memorized: boolean,
+): void {
+  button.setAttribute(
+    "aria-label",
+    memorized ? "Unmemorize topic" : "Memorize topic",
+  );
+  button.title = memorized ? "Unmemorize topic" : "Memorize topic";
+  button.style.background = memorized ? "#e6ddff" : "#f5f5f5";
 }
 
 function stripCastAnnotation(value: string): string {
@@ -332,6 +366,26 @@ async function toggleTopicListEntry(
   }
 }
 
+async function toggleTopicListEntryMemorized(
+  entry: TopicListEntry,
+  button: HTMLButtonElement,
+): Promise<void> {
+  button.disabled = true;
+  try {
+    entry.memorized = await toggleMemorizedTopic({
+      topicUrl: entry.topicUrl,
+      title: entry.title,
+      cast: entry.cast,
+      imageUrl: entry.previewUrl,
+    });
+    updateMemorizeButton(button, entry.memorized);
+  } catch (error) {
+    console.warn("Could not update memorized topic:", error);
+  } finally {
+    button.disabled = false;
+  }
+}
+
 async function loadTopicListEntry(
   entry: TopicListEntry,
   isCurrentActivation: () => boolean,
@@ -353,12 +407,21 @@ async function loadTopicListEntry(
     if (!isCurrentActivation()) return;
     entry.images = Array.isArray(response.images) ? response.images : [];
     entry.cast = response.cast ?? "";
+    entry.previewUrl = response.previewUrl || entry.images[0]?.thumbnailUrl || null;
     entry.actressMatches = Array.isArray(response.actressMatches) ? response.actressMatches : [];
     renderCastLinks(cast, entry.cast, entry.actressMatches);
 
+    if (entry.memorized) {
+      await updateMemorizedTopic(entry.topicUrl, {
+        title: entry.title,
+        cast: entry.cast,
+        imageUrl: entry.previewUrl,
+      });
+    }
+
     const firstImage = entry.images[0];
     if (firstImage?.thumbnailUrl || response.previewUrl) {
-      preview.src = response.previewUrl || firstImage!.thumbnailUrl;
+      preview.src = entry.previewUrl!;
       preview.alt = "Post image";
     } else {
       preview.alt = "No post image found";
@@ -404,10 +467,17 @@ export async function activateTopicListMode(): Promise<void> {
     return;
   }
 
-  const settings = await getTopicListSettings();
+  const [settings, memorizedTopics] = await Promise.all([
+    getTopicListSettings(),
+    getMemorizedTopics(),
+  ]);
   if (!isCurrentActivation()) return;
+  const memorizedTopicIds = new Set(
+    memorizedTopics.map((topic) => topic.topicId),
+  );
   const entries = allEntries.filter((entry) => {
     entry.hidden = settings.hiddenTopicIds.has(getTopicId(entry.topicUrl));
+    entry.memorized = memorizedTopicIds.has(getTopicId(entry.topicUrl));
     entry.hideHiddenTopics = settings.hideHiddenTopics;
     entry.highlightActresses = settings.highlightActresses;
     if (entry.hidden && settings.hideHiddenTopics) {
