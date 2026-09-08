@@ -3,6 +3,8 @@ import type { ExtensionMessage } from "../types";
 import { ImageResolutionService } from "./imageResolutionService";
 import { TopicPreviewService } from "./topicPreviewService";
 import { isTopicPageUrl } from "./urlMatcher";
+import { lookupActress } from "./actressLookup";
+import { loadImageDataUrl } from "../tabLoader";
 
 export function registerMessageRouter(
   topicPreviewService: TopicPreviewService,
@@ -27,7 +29,11 @@ export function registerMessageRouter(
         if (!isTopicPageUrl(message.url)) {
           return Promise.resolve({ images: [] });
         }
-        return topicPreviewService.loadTopicImages(message.url, senderTabId);
+        return topicPreviewService.loadTopicImages(
+          message.url,
+          senderTabId,
+          message.highlightActresses === true,
+        );
       }
 
       if (message.action === "resolveImages") {
@@ -35,6 +41,22 @@ export function registerMessageRouter(
           return Promise.resolve({ images: [] });
         }
         return imageResolutionService.resolveImages(message.images, senderTabId);
+      }
+
+      if (message.action === "lookupActress") {
+        return lookupActress(message.provider, message.query);
+      }
+
+      if (message.action === "cacheImage") {
+        return loadImageDataUrl(message.url)
+          .then((imageDataUrl) => ({ imageDataUrl }))
+          .catch(() => ({ imageDataUrl: null }));
+      }
+
+      if (message.action === "openActressSearch") {
+        const url = new URL("https://pornolab.net/forum/tracker.php");
+        url.searchParams.set("nm", message.name);
+        return browser.tabs.create({ url: url.toString(), active: true });
       }
 
       return undefined;

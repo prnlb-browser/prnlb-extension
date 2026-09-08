@@ -36,6 +36,105 @@ export interface LoadPageHtmlOptions {
   keepTabOpenOnTimeout?: boolean;
 }
 
+export interface LoadImageDataUrlOptions {
+  /** Max time to wait for the image document to render. */
+  timeoutMs?: number;
+  /** How often to check the rendered image. */
+  pollIntervalMs?: number;
+  /** Cancel the temporary tab and request. */
+  signal?: AbortSignal;
+}
+
+/**
+ * Load an image in a real browser tab and return a data URL made from the
+ * rendered pixels. This handles image hosts such as IAFD that reject direct
+ * extension/background image requests but serve a normal browser navigation.
+ */
+export async function loadImageDataUrl(
+  url: string,
+  options: LoadImageDataUrlOptions = {},
+): Promise<string> {
+  const {
+    timeoutMs = 15000,
+    pollIntervalMs = 250,
+    signal,
+  } = options;
+  if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
+
+  const tab = await browser.tabs.create({ url, active: false });
+  const tabId = tab.id;
+  if (tabId === undefined) throw new Error(`Failed to create image tab for ${url}`);
+  const imageTabId = tabId;
+
+  try {
+    return await new Promise<string>((resolve, reject) => {
+      let settled = false;
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      let deadlineTimer: ReturnType<typeof setTimeout> | undefined;
+
+      const cleanup = (): void => {
+        if (timer) clearTimeout(timer);
+        if (deadlineTimer) clearTimeout(deadlineTimer);
+        signal?.removeEventListener("abort", onAbort);
+      };
+      const finishOk = (value: string): void => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        resolve(value);
+      };
+      const finishError = (error: Error): void => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        reject(error);
+      };
+      const onAbort = (): void => finishError(new DOMException("Aborted", "AbortError"));
+
+      async function poll(): Promise<void> {
+        if (settled) return;
+        try {
+          const result = await browser.scripting.executeScript({
+            target: { tabId: imageTabId },
+            func: () => {
+              const image = document.images[0];
+              if (!image || !image.complete || image.naturalWidth === 0 || image.naturalHeight === 0) return null;
+              const canvas = document.createElement("canvas");
+              canvas.width = image.naturalWidth;
+              canvas.height = image.naturalHeight;
+              const context = canvas.getContext("2d");
+              if (!context) return null;
+              try {
+                context.drawImage(image, 0, 0);
+                return canvas.toDataURL("image/jpeg", 0.92);
+              } catch {
+                return null;
+              }
+            },
+          });
+          const dataUrl = result?.[0]?.result;
+          if (typeof dataUrl === "string" && dataUrl.startsWith("data:image/")) {
+            finishOk(dataUrl);
+            return;
+          }
+        } catch {
+          // The image document may not be scriptable until navigation settles.
+        }
+        if (!settled) timer = setTimeout(() => void poll(), pollIntervalMs);
+      }
+
+      signal?.addEventListener("abort", onAbort);
+      deadlineTimer = setTimeout(
+        () => finishError(new Error(`Timed out loading image ${url}`)),
+        timeoutMs,
+      );
+      void poll();
+    });
+  } finally {
+    await browser.tabs.remove(imageTabId).catch(() => {});
+  }
+}
+
 /**
  * Loads a URL in a new, inactive background tab, waits for the relevant
  * content to render, extracts the HTML, then closes the tab.

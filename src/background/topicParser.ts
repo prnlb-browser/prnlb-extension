@@ -20,6 +20,32 @@ function hasClass(value: string | null, className: string): boolean {
   return !!value && new RegExp(`(^|\\s)${className}(\\s|$)`, "i").test(value);
 }
 
+function decodeTextEntities(value: string): string {
+  return value
+    .replace(/<br\s*\/?\s*>/gi, "\n")
+    .replace(/<\/(?:div|p|li|tr|h[1-6])\s*>/gi, "\n")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;|&#x27;/gi, "'")
+    .replace(/[ \t]+/g, " ");
+}
+
+/** Extract the Cast value from the first post, alongside its images. */
+export function extractTopicCast(html: string): string {
+  const startMatch = /<div\b[^>]*\bclass\s*=\s*["'][^"']*\bpost-user-message\b[^"']*["'][^>]*>/i.exec(html);
+  if (!startMatch) return "";
+  const start = startMatch.index + startMatch[0].length;
+  const bodyEnd = html.indexOf("<!--/post_body-->", start);
+  const post = html.slice(start, bodyEnd >= 0 ? bodyEnd : start + 100_000);
+  if (!post) return "";
+  const text = decodeTextEntities(post);
+  return text.match(/(?:В ролях|Имена актёров|Имя актрисы|Cast)[:\s]*([^\n]+)/i)?.[1]?.trim() ?? "";
+}
+
 /** Return true after Pornolab has rendered the complete first post body. */
 export function firstPostBodyIsComplete(html: string): boolean {
   const firstPostBody = html.search(

@@ -17,7 +17,9 @@
     "https://*.imgbox.com/*",
     "https://imgbox.com/*",
     "https://*.turboimagehost.com/*",
-    "https://turboimagehost.com/*"
+    "https://turboimagehost.com/*",
+    "https://www.boobpedia.com/*",
+    "https://www.iafd.com/*"
   ],
   "action": {
     "default_title": "View screenshots",

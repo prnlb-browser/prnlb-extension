@@ -2,8 +2,10 @@ import {
   clearHiddenTopics,
   getTopicListSettings,
   notifyTopicListSettingsChanged,
+  setHighlightActresses,
   setHideHiddenTopics,
 } from "./hiddenTopics";
+import { disposeActressesPanel, populateActressesPanel } from "./actresses";
 
 const DIALOG_ID = "__prnlb_options_dialog";
 
@@ -28,7 +30,7 @@ export function openOptionsDialog(): void {
   dialog.setAttribute("aria-modal", "true");
   dialog.setAttribute("aria-labelledby", "__prnlb_options_title");
   dialog.style.cssText =
-    "display:flex;flex-direction:column;width:min(560px,100%);min-height:320px;max-height:min(680px,100%);overflow:hidden;background:#fff;color:#222;border-radius:8px;box-shadow:0 20px 60px rgba(0,0,0,.4);";
+    "display:flex;flex-direction:column;width:min(720px,100%);min-height:360px;max-height:min(760px,100%);overflow:hidden;background:#fff;color:#222;border-radius:8px;box-shadow:0 20px 60px rgba(0,0,0,.4);";
 
   const header = document.createElement("div");
   header.style.cssText =
@@ -88,7 +90,8 @@ export function openOptionsDialog(): void {
 
   createTab("actresses", "Actresses");
   createTab("options", "Options");
-  createPanel("actresses", "Actress settings");
+  const actressesPanel = createPanel("actresses", "Actress settings");
+  populateActressesPanel(actressesPanel);
   const optionsPanel = createPanel("options", "Viewer settings");
   populateOptionsPanel(optionsPanel);
 
@@ -159,6 +162,23 @@ function populateOptionsPanel(panel: HTMLDivElement): void {
   settingText.appendChild(settingDescription);
   setting.append(checkbox, settingText);
 
+  const highlightSetting = document.createElement("label");
+  highlightSetting.style.cssText =
+    "display:flex;align-items:flex-start;gap:8px;color:#222;cursor:pointer;";
+  const highlightCheckbox = document.createElement("input");
+  highlightCheckbox.type = "checkbox";
+  highlightCheckbox.disabled = true;
+  highlightCheckbox.style.cssText = "margin:2px 0 0;";
+  const highlightText = document.createElement("span");
+  highlightText.textContent = "Highlight actresses";
+  const highlightDescription = document.createElement("small");
+  highlightDescription.textContent =
+    "Highlight topics whose first post Cast contains an actress from the catalogue.";
+  highlightDescription.style.cssText =
+    "display:block;margin-top:4px;color:#666;line-height:1.4;";
+  highlightText.appendChild(highlightDescription);
+  highlightSetting.append(highlightCheckbox, highlightText);
+
   const clearButton = document.createElement("button");
   clearButton.type = "button";
   clearButton.textContent = "Remove all hidden flags";
@@ -168,13 +188,15 @@ function populateOptionsPanel(panel: HTMLDivElement): void {
   const status = document.createElement("div");
   status.style.cssText = "min-height:18px;color:#666;font-size:12px;";
 
-  section.append(heading, setting, clearButton, status);
+  section.append(heading, setting, highlightSetting, clearButton, status);
   panel.appendChild(section);
 
   void getTopicListSettings()
     .then((settings) => {
       checkbox.checked = settings.hideHiddenTopics;
       checkbox.disabled = false;
+      highlightCheckbox.checked = settings.highlightActresses;
+      highlightCheckbox.disabled = false;
     })
     .catch(() => {
       status.textContent = "Could not load viewer settings.";
@@ -197,6 +219,23 @@ function populateOptionsPanel(panel: HTMLDivElement): void {
       });
   });
 
+  highlightCheckbox.addEventListener("change", () => {
+    const enabled = highlightCheckbox.checked;
+    highlightCheckbox.disabled = true;
+    void setHighlightActresses(enabled)
+      .then(() => {
+        status.textContent = "Saved. Reloading the topic list…";
+        notifyTopicListSettingsChanged();
+      })
+      .catch(() => {
+        highlightCheckbox.checked = !enabled;
+        status.textContent = "Could not save viewer settings.";
+      })
+      .finally(() => {
+        highlightCheckbox.disabled = false;
+      });
+  });
+
   clearButton.addEventListener("click", () => {
     clearButton.disabled = true;
     void clearHiddenTopics()
@@ -215,5 +254,6 @@ function populateOptionsPanel(panel: HTMLDivElement): void {
 
 export function closeOptionsDialog(): void {
   document.getElementById(DIALOG_ID)?.remove();
+  disposeActressesPanel();
   document.removeEventListener("keydown", handleEscape);
 }

@@ -8,6 +8,7 @@ import {
   TOPIC_LIST_SETTINGS_CHANGED_EVENT,
 } from "./hiddenTopics";
 import { openOptionsDialog } from "./optionsDialog";
+import { requestActressEditor } from "./actresses";
 import { sendMessageSafely } from "./runtimeMessaging";
 
 interface TopicListEntry {
@@ -17,6 +18,9 @@ interface TopicListEntry {
   images: ScrapedImage[];
   hidden: boolean;
   hideHiddenTopics: boolean;
+  highlightActresses: boolean;
+  cast: string;
+  actressMatches: Array<{ id: string; name: string; otherNames: string[]; isFavorite: boolean }>;
 }
 
 interface TopicListProgress {
@@ -147,6 +151,9 @@ function createTopicListEntries(table: HTMLTableElement): TopicListEntry[] {
       images: [],
       hidden: false,
       hideHiddenTopics: true,
+      highlightActresses: false,
+      cast: "",
+      actressMatches: [],
     });
   }
 
@@ -155,6 +162,7 @@ function createTopicListEntries(table: HTMLTableElement): TopicListEntry[] {
 
 function prepareTopicListCell(entry: TopicListEntry): {
   preview: HTMLImageElement;
+  cast: HTMLDivElement;
   button: HTMLButtonElement;
 } {
   entry.cell.innerHTML = "";
@@ -163,12 +171,40 @@ function prepareTopicListCell(entry: TopicListEntry): {
 
   const wrapper = document.createElement("div");
   wrapper.style.cssText =
-    "display:flex;align-items:center;gap:8px;width:230px;max-width:calc(100vw - 20px);box-sizing:border-box;overflow:visible;";
+    "display:flex;align-items:center;gap:8px;width:fit-content;max-width:calc(100vw - 20px);box-sizing:border-box;overflow:visible;";
 
   const preview = document.createElement("img");
   preview.alt = "Loading post image";
   preview.style.cssText =
-    "display:block;flex:0 1 180px;min-width:0;width:180px !important;max-width:180px !important;height:110px !important;max-height:110px !important;object-fit:contain;border-radius:3px;";
+    "display:block;flex:0 0 160px;min-width:0;width:160px !important;max-width:160px !important;height:100px !important;max-height:100px !important;object-fit:contain;border-radius:3px;";
+
+  let enlargedPreview: HTMLDivElement | null = null;
+  const hideEnlargedPreview = (): void => {
+    enlargedPreview?.remove();
+    enlargedPreview = null;
+  };
+  preview.addEventListener("mouseenter", () => {
+    const source = preview.getAttribute("src");
+    if (!source || enlargedPreview) return;
+    const overlay = document.createElement("div");
+    overlay.style.cssText =
+      "position:fixed;inset:0;z-index:2147483646;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;background:rgba(0,0,0,.45);pointer-events:none;";
+    const image = document.createElement("img");
+    image.src = source;
+    image.alt = "Full-size post image";
+    image.style.cssText =
+      "display:block;max-width:95vw;max-height:95vh;width:auto;height:auto;object-fit:contain;box-shadow:0 8px 32px rgba(0,0,0,.55);";
+    overlay.appendChild(image);
+    (document.body ?? document.documentElement).appendChild(overlay);
+    enlargedPreview = overlay;
+    image.onerror = hideEnlargedPreview;
+  });
+  preview.addEventListener("mouseleave", hideEnlargedPreview);
+
+  const cast = document.createElement("div");
+  cast.className = "__prnlb_topic_cast";
+  cast.style.cssText =
+    "display:flex;flex:1 1 180px;min-width:130px;max-width:260px;flex-direction:column;justify-content:center;align-self:stretch;overflow:auto;font-size:13px;line-height:1.45;color:#333;";
 
   const button = document.createElement("button");
   button.type = "button";
@@ -177,12 +213,12 @@ function prepareTopicListCell(entry: TopicListEntry): {
   button.disabled = true;
   button.title = "View screenshots from this topic";
   button.style.cssText =
-    "display:block;width:50px;height:34px;box-sizing:border-box;padding:2px;border:1px solid #999;border-radius:4px;background:#f5f5f5;color:#222;font-size:19px;line-height:1;cursor:pointer;";
+    "display:block;width:36px;height:32px;box-sizing:border-box;padding:2px;border:1px solid #999;border-radius:4px;background:#f5f5f5;color:#222;font-size:18px;line-height:1;cursor:pointer;";
 
   const actions = document.createElement("div");
   actions.className = "__prnlb_topic_actions";
   actions.style.cssText =
-    "display:flex;flex:0 0 52px;flex-direction:column;align-items:center;gap:5px;";
+    "display:flex;flex:0 0 36px;flex-direction:column;align-items:center;gap:5px;";
   actions.appendChild(button);
 
   const hideButton = document.createElement("button");
@@ -194,13 +230,63 @@ function prepareTopicListCell(entry: TopicListEntry): {
   );
   hideButton.title = entry.hidden ? "Show this topic" : "Hide this topic";
   hideButton.style.cssText =
-    "display:block;width:50px;height:34px;box-sizing:border-box;padding:2px;border:1px solid #999;border-radius:4px;background:#f5f5f5;color:#222;font-size:19px;line-height:1;cursor:pointer;";
+    "display:block;width:36px;height:32px;box-sizing:border-box;padding:2px;border:1px solid #999;border-radius:4px;background:#f5f5f5;color:#222;font-size:18px;line-height:1;cursor:pointer;";
   hideButton.onclick = () => void toggleTopicListEntry(entry, hideButton);
   actions.appendChild(hideButton);
 
-  wrapper.append(preview, actions);
+  wrapper.append(preview, cast, actions);
   entry.cell.appendChild(wrapper);
-  return { preview, button };
+  return { preview, button, cast };
+}
+
+function stripCastAnnotation(value: string): string {
+  return value.replace(/\([^)]*\)/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function renderCastLinks(
+  container: HTMLDivElement,
+  castValue: string,
+  matches: TopicListEntry["actressMatches"],
+): void {
+  container.textContent = "";
+  if (!castValue) return;
+
+  const heading = document.createElement("span");
+  heading.textContent = "Cast";
+  heading.style.cssText = "margin-bottom:3px;font-weight:600;color:#555;";
+  container.appendChild(heading);
+
+  const names = castValue
+    // Pornolab commonly joins multiple performers with either commas or an
+    // ampersand (e.g. "Lila Lovely & Chocolate God").
+    .split(/\s*(?:,|&)\s*/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+  const namesRow = document.createElement("div");
+  for (const [index, visibleName] of names.entries()) {
+    const name = stripCastAnnotation(visibleName);
+    if (!name) continue;
+    const normalized = name.toLocaleLowerCase();
+    const existing = matches.find(
+      (actress) =>
+        actress.name.toLocaleLowerCase() === normalized ||
+        actress.otherNames.some((alias) => alias.toLocaleLowerCase() === normalized),
+    );
+    const link = document.createElement("a");
+    link.href = "#";
+    link.textContent = visibleName;
+    link.title = existing ? "Edit existing actress" : "Add new actress";
+    link.style.cssText = "color:#315fb4;text-decoration:underline;cursor:pointer;";
+    link.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      openOptionsDialog();
+      requestActressEditor(name);
+    });
+    namesRow.appendChild(link);
+    if (index < names.length - 1) namesRow.append(", ");
+  }
+  container.appendChild(namesRow);
 }
 
 async function toggleTopicListEntry(
@@ -229,14 +315,24 @@ async function toggleTopicListEntry(
 }
 
 async function loadTopicListEntry(entry: TopicListEntry): Promise<void> {
-  const { preview, button } = prepareTopicListCell(entry);
+  const { preview, cast, button } = prepareTopicListCell(entry);
 
   try {
     const response = (await browser.runtime.sendMessage({
       action: "loadTopicImages",
       url: entry.topicUrl,
-    })) as { images?: ScrapedImage[]; previewUrl?: string };
+      highlightActresses: entry.highlightActresses,
+    })) as {
+      images?: ScrapedImage[];
+      previewUrl?: string;
+      cast?: string;
+      actressMatch?: { name: string; isFavorite: boolean };
+      actressMatches?: Array<{ id: string; name: string; otherNames: string[]; isFavorite: boolean }>;
+    };
     entry.images = Array.isArray(response.images) ? response.images : [];
+    entry.cast = response.cast ?? "";
+    entry.actressMatches = Array.isArray(response.actressMatches) ? response.actressMatches : [];
+    renderCastLinks(cast, entry.cast, entry.actressMatches);
 
     const firstImage = entry.images[0];
     if (firstImage?.thumbnailUrl || response.previewUrl) {
@@ -249,6 +345,13 @@ async function loadTopicListEntry(entry: TopicListEntry): Promise<void> {
     if (entry.images.length > 0) {
       button.disabled = false;
       button.onclick = () => openCarousel(entry.images);
+    }
+
+    if (entry.highlightActresses && response.actressMatch) {
+      entry.row.style.backgroundColor = response.actressMatch.isFavorite
+        ? "rgba(212,160,23,.34)"
+        : "rgba(192,192,192,.42)";
+      entry.row.title = `${response.actressMatch.isFavorite ? "Favorite" : "Catalogue"} actress: ${response.actressMatch.name}`;
     }
   } catch {
     preview.alt = "Topic image unavailable";
@@ -276,6 +379,7 @@ export async function activateTopicListMode(): Promise<void> {
   const entries = allEntries.filter((entry) => {
     entry.hidden = settings.hiddenTopicIds.has(getTopicId(entry.topicUrl));
     entry.hideHiddenTopics = settings.hideHiddenTopics;
+    entry.highlightActresses = settings.highlightActresses;
     if (entry.hidden && settings.hideHiddenTopics) {
       entry.row.remove();
       return false;

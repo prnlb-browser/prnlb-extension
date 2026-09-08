@@ -3,10 +3,13 @@ import type { ResolvedImage, ScrapedImage } from "./resolvers/types";
 export type ExtensionMessage =
   | { action: "showCarousel" }
   | { action: "showTopicList" }
-  | { action: "loadTopicImages"; url: string }
+  | { action: "loadTopicImages"; url: string; highlightActresses?: boolean }
   | { action: "abortTopicLoads" }
   | { action: "resolveImages"; images: ScrapedImage[] }
   | { action: "abortResolution" }
+  | { action: "lookupActress"; provider: "boobpedia" | "iafd"; query: string }
+  | { action: "cacheImage"; url: string }
+  | { action: "openActressSearch"; name: string }
   | {
       action: "resolveProgress";
       phase: string;

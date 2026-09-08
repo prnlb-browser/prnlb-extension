@@ -2,7 +2,9 @@ import browser from "webextension-polyfill";
 
 const HIDDEN_TOPIC_IDS_KEY = "prnlbHiddenTopicIds";
 const HIDE_HIDDEN_TOPICS_KEY = "prnlbHideHiddenTopics";
+const HIGHLIGHT_ACTRESSES_KEY = "prnlbHighlightActresses";
 const DEFAULT_HIDE_HIDDEN_TOPICS = true;
+const DEFAULT_HIGHLIGHT_ACTRESSES = false;
 
 export const TOPIC_LIST_SETTINGS_CHANGED_EVENT =
   "__prnlb_topic_list_settings_changed";
@@ -10,6 +12,7 @@ export const TOPIC_LIST_SETTINGS_CHANGED_EVENT =
 export interface TopicListSettings {
   hiddenTopicIds: Set<string>;
   hideHiddenTopics: boolean;
+  highlightActresses: boolean;
 }
 
 /** Use the topic id when available so different links to one topic share a flag. */
@@ -30,6 +33,7 @@ export async function getTopicListSettings(): Promise<TopicListSettings> {
   const stored = await browser.storage.local.get([
     HIDDEN_TOPIC_IDS_KEY,
     HIDE_HIDDEN_TOPICS_KEY,
+    HIGHLIGHT_ACTRESSES_KEY,
   ]);
   const hiddenTopicIds = Array.isArray(stored[HIDDEN_TOPIC_IDS_KEY])
     ? stored[HIDDEN_TOPIC_IDS_KEY].filter(
@@ -43,6 +47,10 @@ export async function getTopicListSettings(): Promise<TopicListSettings> {
       typeof stored[HIDE_HIDDEN_TOPICS_KEY] === "boolean"
         ? stored[HIDE_HIDDEN_TOPICS_KEY]
         : DEFAULT_HIDE_HIDDEN_TOPICS,
+    highlightActresses:
+      typeof stored[HIGHLIGHT_ACTRESSES_KEY] === "boolean"
+        ? stored[HIGHLIGHT_ACTRESSES_KEY]
+        : DEFAULT_HIGHLIGHT_ACTRESSES,
   };
 }
 
@@ -67,6 +75,12 @@ export async function clearHiddenTopics(): Promise<void> {
 export async function setHideHiddenTopics(enabled: boolean): Promise<void> {
   await browser.storage.local.set({
     [HIDE_HIDDEN_TOPICS_KEY]: enabled,
+  });
+}
+
+export async function setHighlightActresses(enabled: boolean): Promise<void> {
+  await browser.storage.local.set({
+    [HIGHLIGHT_ACTRESSES_KEY]: enabled,
   });
 }
 

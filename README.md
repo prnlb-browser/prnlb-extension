@@ -6,6 +6,7 @@ It has two operating modes:
 
 - On a topic page, click the extension icon to open a screenshot carousel for the first post.
 - On a forum, tracker, or search-result topic list, click the extension icon to add a post-image preview and a screenshot button to each topic row. The button opens the same carousel for that topic.
+- The topic-list options include an Actresses catalogue with aliases, favorites, profile-picture URLs, and Boobpedia/IAFD lookup. Actress search buttons open a new Pornolab search tab, and catalogue matches can highlight topic rows.
 
 Image-host pages are rendered in temporary browser tabs when necessary, which allows the extension to handle hosts that depend on browser JavaScript or restrict direct requests.
 
@@ -59,6 +60,7 @@ The build bundles `src/background.ts` and `src/content.ts`, then copies the mani
 - `src/resolvers/` contains image-host-specific resolvers.
 - `src/content/carousel.ts` implements the topic-page carousel.
 - `src/content/topicList.ts` implements previews and buttons in topic-list tables.
+- `src/content/actresses.ts` implements the local actress catalogue and edit dialog.
 - `src/tabLoader.ts` loads rendered pages in temporary tabs and supports readiness polling and abort signals.
 
 The background/content boundary uses the message types in `src/types.ts`. Keep those actions stable when changing the UI or background services.

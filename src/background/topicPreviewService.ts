@@ -1,7 +1,8 @@
 import { loadPageHtml } from "../tabLoader";
 import { resolverRegistry } from "../resolvers/registry";
 import type { ScrapedImage } from "../resolvers/types";
-import { extractTopicImages, firstPostBodyIsComplete } from "./topicParser";
+import { extractTopicCast, extractTopicImages, firstPostBodyIsComplete } from "./topicParser";
+import { findActressMatches, getActresses, type ActressRecord } from "../actressStore";
 import {
   TopicImageCache,
   type TopicImageCacheEntry,
@@ -10,6 +11,8 @@ import {
 export interface TopicPreviewResult {
   images: ScrapedImage[];
   previewUrl?: string;
+  actressMatch?: { name: string; isFavorite: boolean };
+  actressMatches?: ActressRecord[];
 }
 
 /** Loads topic pages used by topic-list rows and owns their cancellation. */
@@ -20,16 +23,31 @@ export class TopicPreviewService {
   async loadTopicImages(
     topicUrl: string,
     senderTabId: number | undefined,
+    highlightActresses: boolean,
   ): Promise<TopicPreviewResult> {
     const cached = await this.cache.get(topicUrl);
-    if (cached) return cached;
+    if (cached) return this.addActressMatch(cached, highlightActresses);
 
     const inFlight = this.cache.getInFlight(topicUrl, senderTabId);
-    if (inFlight) return inFlight;
+    if (inFlight) return inFlight.then((result) => this.addActressMatch(result, highlightActresses));
 
     const request = this.loadAndCacheTopicImages(topicUrl, senderTabId);
     this.cache.setInFlight(topicUrl, senderTabId, request);
-    return request;
+    return request.then((result) => this.addActressMatch(result, highlightActresses));
+  }
+
+  private async addActressMatch(
+    result: TopicImageCacheEntry,
+    highlightActresses: boolean,
+  ): Promise<TopicPreviewResult> {
+    const actresses = await getActresses();
+    const matches = findActressMatches(result.cast, actresses);
+    const match = matches[0];
+    return {
+      ...result,
+      actressMatch: highlightActresses && match ? { name: match.name, isFavorite: match.isFavorite } : undefined,
+      actressMatches: matches,
+    };
   }
 
   private async loadAndCacheTopicImages(
@@ -50,6 +68,7 @@ export class TopicPreviewService {
       });
 
       const images = extractTopicImages(html, topicUrl);
+      const cast = extractTopicCast(html);
       const firstImage = images[0];
       const resolvedImages = firstImage
         ? await resolverRegistry.resolveImages(
@@ -66,6 +85,7 @@ export class TopicPreviewService {
 
       const result = {
         images,
+        cast,
         // Use the resolved full-size image when supported and retain the
         // post's img[src] as the fallback for other hosts.
         previewUrl: resolvedPreview || firstImage?.thumbnailUrl,
@@ -82,7 +102,7 @@ export class TopicPreviewService {
           (err as Error).message,
         );
       }
-      return { images: [] };
+      return { images: [], cast: "" };
     } finally {
       this.unregister(senderTabId, controller);
     }

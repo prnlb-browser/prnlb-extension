@@ -4,6 +4,8 @@ import type { ScrapedImage } from "../resolvers/types";
 export interface TopicImageCacheEntry {
   images: ScrapedImage[];
   previewUrl?: string;
+  /** The Cast line from the first post, used for actress highlighting. */
+  cast: string;
 }
 
 const CACHE_KEY_PREFIX = "topicImageCache:";
@@ -90,7 +92,8 @@ export class TopicImageCache {
           typeof image.thumbnailUrl === "string" &&
           typeof image.resolveUrl === "string",
       ) &&
-      (entry.previewUrl === undefined || typeof entry.previewUrl === "string")
+      (entry.previewUrl === undefined || typeof entry.previewUrl === "string") &&
+      typeof entry.cast === "string"
     );
   }
 }
