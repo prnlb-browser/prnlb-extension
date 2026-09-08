@@ -1,6 +1,10 @@
 import browser from "webextension-polyfill";
 import type { ExtensionMessage } from "../types";
 import { isTopicListUrl, isTopicPageUrl } from "./urlMatcher";
+import {
+  getRunOnlyOnTopicPage,
+  RUN_ONLY_ON_TOPIC_PAGE_KEY,
+} from "../settings";
 
 const FEATURE_ENABLED_KEY = "prnlbFeatureEnabled";
 
@@ -19,7 +23,7 @@ function sendDeactivate(tabId: number): void {
   });
 }
 
-function sendActionForTab(tab: browser.Tabs.Tab): void {
+async function sendActionForTab(tab: browser.Tabs.Tab): Promise<void> {
   if (tab.id === undefined) return;
 
   if (isTopicPageUrl(tab.url)) {
@@ -28,7 +32,11 @@ function sendActionForTab(tab: browser.Tabs.Tab): void {
   }
 
   if (isTopicListUrl(tab.url)) {
-    sendAction(tab.id, "showTopicList");
+    if (await getRunOnlyOnTopicPage()) {
+      sendDeactivate(tab.id);
+    } else {
+      sendAction(tab.id, "showTopicList");
+    }
   }
 }
 
@@ -57,6 +65,28 @@ export function registerActionRouter(): void {
     console.warn("Could not read PRNLB Viewer state:", (err as Error).message);
   });
 
+  browser.storage.onChanged.addListener((changes, areaName) => {
+    if (
+      areaName !== "local" ||
+      changes[RUN_ONLY_ON_TOPIC_PAGE_KEY]?.newValue !== true
+    ) {
+      return;
+    }
+
+    void browser.tabs
+      .query({})
+      .then((tabs) => {
+        for (const tab of tabs) {
+          if (tab.id !== undefined && isTopicListUrl(tab.url)) {
+            sendDeactivate(tab.id);
+          }
+        }
+      })
+      .catch((err) => {
+        console.warn("Could not deactivate topic list tabs:", (err as Error).message);
+      });
+  });
+
   browser.action.onClicked.addListener(async (tab) => {
     const enabled = await getFeatureEnabled();
     const nextEnabled = !enabled;
@@ -64,7 +94,7 @@ export function registerActionRouter(): void {
     await updateActionIndicator(nextEnabled);
 
     if (tab.id === undefined) return;
-    if (nextEnabled) sendActionForTab(tab);
+    if (nextEnabled) void sendActionForTab(tab);
     else sendDeactivate(tab.id);
   });
 
@@ -76,7 +106,7 @@ export function registerActionRouter(): void {
       }
 
       return getFeatureEnabled().then((enabled) => {
-        if (enabled) sendActionForTab(sender.tab!);
+        if (enabled) void sendActionForTab(sender.tab!);
       });
     },
   );

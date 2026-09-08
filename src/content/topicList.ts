@@ -60,7 +60,7 @@ export function registerTopicListAbortHandler(): void {
     // Rows hidden during the current run cannot be restored safely without
     // reloading their original table markup, so apply option changes by
     // starting the list scan again.
-    window.location.reload();
+    if (topicListModeActive) window.location.reload();
   });
 }
 

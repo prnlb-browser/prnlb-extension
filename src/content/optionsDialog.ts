@@ -11,6 +11,10 @@ import {
   removeMemorizedTopic,
   type MemorizedTopic,
 } from "./memorizedTopics";
+import {
+  getRunOnlyOnTopicPage,
+  setRunOnlyOnTopicPage,
+} from "../settings";
 
 const DIALOG_ID = "__prnlb_options_dialog";
 
@@ -147,6 +151,27 @@ function populateOptionsPanel(panel: HTMLDivElement): void {
   const section = document.createElement("section");
   section.style.cssText = "display:flex;flex-direction:column;gap:14px;";
 
+  const topicPageOnlySetting = document.createElement("label");
+  topicPageOnlySetting.style.cssText =
+    "display:flex;align-items:flex-start;gap:8px;color:#222;cursor:pointer;";
+  const topicPageOnlyCheckbox = document.createElement("input");
+  topicPageOnlyCheckbox.type = "checkbox";
+  topicPageOnlyCheckbox.disabled = true;
+  topicPageOnlyCheckbox.style.cssText = "margin:2px 0 0;";
+  const topicPageOnlyText = document.createElement("span");
+  topicPageOnlyText.textContent = "Run Only on the Topic Page";
+  const topicPageOnlyDescription = document.createElement("small");
+  topicPageOnlyDescription.textContent =
+    "Do not modify topic list and search-result pages.";
+  topicPageOnlyDescription.style.cssText =
+    "display:block;margin-top:4px;color:#666;line-height:1.4;";
+  topicPageOnlyText.appendChild(topicPageOnlyDescription);
+  topicPageOnlySetting.append(topicPageOnlyCheckbox, topicPageOnlyText);
+
+  const generalHeading = document.createElement("h3");
+  generalHeading.textContent = "General";
+  generalHeading.style.cssText = "margin:0;font-size:15px;color:#222;";
+
   const heading = document.createElement("h3");
   heading.textContent = "Hidden topics";
   heading.style.cssText = "margin:0;font-size:15px;color:#222;";
@@ -196,11 +221,21 @@ function populateOptionsPanel(panel: HTMLDivElement): void {
   const status = document.createElement("div");
   status.style.cssText = "min-height:18px;color:#666;font-size:12px;";
 
-  section.append(heading, setting, highlightSetting, clearButton, status);
+  section.append(
+    generalHeading,
+    topicPageOnlySetting,
+    heading,
+    setting,
+    highlightSetting,
+    clearButton,
+    status,
+  );
   panel.appendChild(section);
 
-  void getTopicListSettings()
-    .then((settings) => {
+  void Promise.all([getTopicListSettings(), getRunOnlyOnTopicPage()])
+    .then(([settings, runOnlyOnTopicPage]) => {
+      topicPageOnlyCheckbox.checked = runOnlyOnTopicPage;
+      topicPageOnlyCheckbox.disabled = false;
       checkbox.checked = settings.hideHiddenTopics;
       checkbox.disabled = false;
       highlightCheckbox.checked = settings.highlightActresses;
@@ -209,6 +244,23 @@ function populateOptionsPanel(panel: HTMLDivElement): void {
     .catch(() => {
       status.textContent = "Could not load viewer settings.";
     });
+
+  topicPageOnlyCheckbox.addEventListener("change", () => {
+    const enabled = topicPageOnlyCheckbox.checked;
+    topicPageOnlyCheckbox.disabled = true;
+    void setRunOnlyOnTopicPage(enabled)
+      .then(() => {
+        status.textContent = "Saved. Reloading the topic list…";
+        notifyTopicListSettingsChanged();
+      })
+      .catch(() => {
+        topicPageOnlyCheckbox.checked = !enabled;
+        status.textContent = "Could not save viewer settings.";
+      })
+      .finally(() => {
+        topicPageOnlyCheckbox.disabled = false;
+      });
+  });
 
   checkbox.addEventListener("change", () => {
     const enabled = checkbox.checked;
