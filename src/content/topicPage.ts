@@ -1,4 +1,7 @@
-import { extractImagesFromPost, findFirstPostImage } from "./imageExtractor";
+import {
+  extractImagesFromPost,
+  findFirstPostImageTarget,
+} from "./imageExtractor";
 import { openCarousel } from "./carousel";
 
 const TOPIC_BUTTON_ID = "__prnlb_topic_button";
@@ -34,9 +37,16 @@ function prepareHost(host: HTMLElement): void {
   buttonHost = host;
 }
 
-function injectButton(image: HTMLImageElement): void {
+function injectButton(target: HTMLElement): void {
   if (document.getElementById(TOPIC_BUTTON_ID)) return;
 
+  if (!(target instanceof HTMLImageElement)) {
+    prepareHost(target);
+    target.appendChild(createTopicButton());
+    return;
+  }
+
+  const image = target;
   const parent = image.parentElement;
   const canUseParent =
     parent instanceof HTMLElement &&
@@ -59,9 +69,9 @@ function injectButton(image: HTMLImageElement): void {
 }
 
 function tryInjectButton(): boolean {
-  const image = findFirstPostImage();
-  if (!image) return false;
-  injectButton(image);
+  const target = findFirstPostImageTarget();
+  if (!target) return false;
+  injectButton(target);
   return true;
 }
 

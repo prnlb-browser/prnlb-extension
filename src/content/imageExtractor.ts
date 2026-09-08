@@ -1,10 +1,15 @@
 import type { ScrapedImage } from "../resolvers/types";
 
-/** Find the first image belonging to the first topic post. */
-export function findFirstPostImage(): HTMLImageElement | null {
+/** Find the first rendered image or image placeholder in the first post. */
+export function findFirstPostImageTarget(): HTMLElement | null {
+  const firstPost = document.querySelector<HTMLElement>(
+    ".post-user-message, .post_body",
+  );
   return (
-    document.querySelector<HTMLImageElement>("var.postImg img") ??
-    document.querySelector<HTMLImageElement>(".post-user-message img")
+    firstPost?.querySelector<HTMLElement>(
+      "var.postImg img, img.postImg, img, var.postImg",
+    ) ??
+    document.querySelector<HTMLElement>("var.postImg img, img.postImg, var.postImg")
   );
 }
 
