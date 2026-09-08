@@ -1,6 +1,13 @@
 import browser from "webextension-polyfill";
 import type { ScrapedImage } from "../resolvers/types";
 import { openCarousel } from "./carousel";
+import {
+  getTopicId,
+  getTopicListSettings,
+  toggleTopicHidden,
+  TOPIC_LIST_SETTINGS_CHANGED_EVENT,
+} from "./hiddenTopics";
+import { openOptionsDialog } from "./optionsDialog";
 import { sendMessageSafely } from "./runtimeMessaging";
 
 interface TopicListEntry {
@@ -8,6 +15,8 @@ interface TopicListEntry {
   cell: HTMLTableCellElement;
   topicUrl: string;
   images: ScrapedImage[];
+  hidden: boolean;
+  hideHiddenTopics: boolean;
 }
 
 interface TopicListProgress {
@@ -23,6 +32,12 @@ let topicListModeActive = false;
 export function registerTopicListAbortHandler(): void {
   window.addEventListener("pagehide", () => {
     sendMessageSafely({ action: "abortTopicLoads" });
+  });
+  window.addEventListener(TOPIC_LIST_SETTINGS_CHANGED_EVENT, () => {
+    // Rows hidden during the current run cannot be restored safely without
+    // reloading their original table markup, so apply option changes by
+    // starting the list scan again.
+    window.location.reload();
   });
 }
 
@@ -90,10 +105,7 @@ function addTopicListOptionsIcon(table: HTMLTableElement): void {
   options.setAttribute("aria-label", "PRNLB Viewer options");
   options.style.cssText =
     "position:absolute;top:4px;left:4px;z-index:5;width:28px;height:28px;padding:3px;border:1px solid rgba(0,0,0,.25);border-radius:4px;background:rgba(255,255,255,.9);cursor:pointer;opacity:.85;";
-  options.onclick = () => {
-    topicListModeActive = false;
-    void activateTopicListMode();
-  };
+  options.onclick = openOptionsDialog;
 
   const icon = document.createElement("img");
   icon.src = browser.runtime.getURL("icon.png");
@@ -128,7 +140,14 @@ function createTopicListEntries(table: HTMLTableElement): TopicListEntry[] {
       location.href,
     ).toString();
     seenRows.add(row);
-    entries.push({ row, cell, topicUrl, images: [] });
+    entries.push({
+      row,
+      cell,
+      topicUrl,
+      images: [],
+      hidden: false,
+      hideHiddenTopics: true,
+    });
   }
 
   return entries;
@@ -158,17 +177,55 @@ function prepareTopicListCell(entry: TopicListEntry): {
   button.disabled = true;
   button.title = "View screenshots from this topic";
   button.style.cssText =
-    "display:block;width:34px;height:34px;padding:2px;border:1px solid #999;border-radius:4px;background:#f5f5f5;color:#222;font-size:19px;line-height:1;cursor:pointer;";
+    "display:block;width:50px;height:34px;box-sizing:border-box;padding:2px;border:1px solid #999;border-radius:4px;background:#f5f5f5;color:#222;font-size:19px;line-height:1;cursor:pointer;";
 
   const actions = document.createElement("div");
   actions.className = "__prnlb_topic_actions";
   actions.style.cssText =
-    "display:flex;flex:0 0 42px;flex-direction:column;align-items:center;gap:5px;";
+    "display:flex;flex:0 0 52px;flex-direction:column;align-items:center;gap:5px;";
   actions.appendChild(button);
+
+  const hideButton = document.createElement("button");
+  hideButton.type = "button";
+  hideButton.textContent = entry.hidden ? "👁️" : "🙈";
+  hideButton.setAttribute(
+    "aria-label",
+    entry.hidden ? "Show topic" : "Hide topic",
+  );
+  hideButton.title = entry.hidden ? "Show this topic" : "Hide this topic";
+  hideButton.style.cssText =
+    "display:block;width:50px;height:34px;box-sizing:border-box;padding:2px;border:1px solid #999;border-radius:4px;background:#f5f5f5;color:#222;font-size:19px;line-height:1;cursor:pointer;";
+  hideButton.onclick = () => void toggleTopicListEntry(entry, hideButton);
+  actions.appendChild(hideButton);
 
   wrapper.append(preview, actions);
   entry.cell.appendChild(wrapper);
   return { preview, button };
+}
+
+async function toggleTopicListEntry(
+  entry: TopicListEntry,
+  button: HTMLButtonElement,
+): Promise<void> {
+  button.disabled = true;
+  try {
+    entry.hidden = await toggleTopicHidden(entry.topicUrl);
+    if (entry.hidden && entry.hideHiddenTopics) {
+      entry.row.remove();
+      return;
+    }
+
+    button.textContent = entry.hidden ? "👁️" : "🙈";
+    button.setAttribute(
+      "aria-label",
+      entry.hidden ? "Show topic" : "Hide topic",
+    );
+    button.title = entry.hidden ? "Show this topic" : "Hide this topic";
+  } catch (error) {
+    console.warn("Could not update hidden topic flag:", error);
+  } finally {
+    if (entry.row.isConnected) button.disabled = false;
+  }
 }
 
 async function loadTopicListEntry(entry: TopicListEntry): Promise<void> {
@@ -205,15 +262,28 @@ export async function activateTopicListMode(): Promise<void> {
   if (tables.length === 0) return;
   topicListModeActive = true;
 
-  const entries = tables.flatMap((table) => {
+  const allEntries = tables.flatMap((table) => {
     addTopicListOptionsIcon(table);
     return createTopicListEntries(table);
   });
-  if (entries.length === 0) {
+  if (allEntries.length === 0) {
     // Leave activation retryable if rows are inserted after the content script.
     topicListModeActive = false;
     return;
   }
+
+  const settings = await getTopicListSettings();
+  const entries = allEntries.filter((entry) => {
+    entry.hidden = settings.hiddenTopicIds.has(getTopicId(entry.topicUrl));
+    entry.hideHiddenTopics = settings.hideHiddenTopics;
+    if (entry.hidden && settings.hideHiddenTopics) {
+      entry.row.remove();
+      return false;
+    }
+    return true;
+  });
+
+  if (entries.length === 0) return;
 
   const progress = createTopicListProgress(entries.length);
 

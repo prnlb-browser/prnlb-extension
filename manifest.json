@@ -9,7 +9,7 @@
       "strict_min_version": "120.0"
     }
   },
-  "permissions": ["activeTab", "tabs", "scripting", "windows"],
+  "permissions": ["activeTab", "tabs", "scripting", "windows", "storage"],
   "host_permissions": [
     "https://pornolab.net/*",
     "*://*.fastpic.org/*",
