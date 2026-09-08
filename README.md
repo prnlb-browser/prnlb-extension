@@ -4,8 +4,9 @@ PRNLB Viewer is a Chrome and Firefox extension for extracting image URLs from Po
 
 It has two operating modes:
 
-- On a topic page, click the extension icon to open a screenshot carousel for the first post.
-- On a forum, tracker, or search-result topic list, click the extension icon to add a post-image preview and a screenshot button to each topic row. The button opens the same carousel for that topic.
+- When enabled (the default), a topic page automatically opens a screenshot carousel for the first post.
+- On a forum, tracker, or search-result topic list, the extension automatically adds a post-image preview and a screenshot button to each topic row. The button opens the same carousel for that topic.
+- The toolbar button is an ON/OFF toggle. Turning it off closes the current viewer and restores the original topic-list markup; turning it on immediately activates the current supported Pornolab page. The setting is remembered across page loads.
 - The topic-list options include an Actresses catalogue with aliases, favorites, profile-picture URLs, and Boobpedia/IAFD lookup. Actress search buttons open a new Pornolab search tab, and catalogue matches can highlight topic rows.
 
 Image-host pages are rendered in temporary browser tabs when necessary, which allows the extension to handle hosts that depend on browser JavaScript or restrict direct requests.
@@ -72,7 +73,7 @@ The background/content boundary uses the message types in `src/types.ts`. Keep t
 3. Enable **Developer mode**.
 4. Click **Load unpacked**.
 5. Select the generated `dist/` directory.
-6. Visit a supported Pornolab page and click the extension icon.
+6. Visit a supported Pornolab page. The extension activates automatically; use the extension icon to toggle it off or on.
 
 After making changes, run `npm run build` and click the extension card's reload button.
 
@@ -82,7 +83,7 @@ After making changes, run `npm run build` and click the extension card's reload 
 2. Open `about:debugging#/runtime/this-firefox`.
 3. Click **Load Temporary Add-on**.
 4. Select `dist/manifest.json`.
-5. Visit a supported Pornolab page and click the extension icon.
+5. Visit a supported Pornolab page. The extension activates automatically; use the extension icon to toggle it off or on.
 
 After making changes, run `npm run build` and click **Reload** next to the extension entry.
 

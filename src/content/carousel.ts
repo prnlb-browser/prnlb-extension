@@ -118,7 +118,7 @@ export function openCarousel(scrapedImages?: ScrapedImage[]): void {
   void loadAndShowImages(scrapedImages);
 }
 
-function closeCarousel(): void {
+export function closeCarousel(): void {
   const overlay = document.getElementById("__prnlb_carousel");
   if (overlay) overlay.remove();
   if (carouselKeyHandler) {

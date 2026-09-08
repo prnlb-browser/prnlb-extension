@@ -1,6 +1,8 @@
 import type { ResolvedImage, ScrapedImage } from "./resolvers/types";
 
 export type ExtensionMessage =
+  | { action: "pageLoaded" }
+  | { action: "deactivate" }
   | { action: "showCarousel" }
   | { action: "showTopicList" }
   | { action: "loadTopicImages"; url: string; highlightActresses?: boolean }

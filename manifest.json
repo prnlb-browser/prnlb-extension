@@ -22,7 +22,7 @@
     "https://www.iafd.com/*"
   ],
   "action": {
-    "default_title": "View screenshots",
+    "default_title": "PRNLB Viewer: enabled (click to disable)",
     "default_icon": {
       "16": "icon.png",
       "48": "icon.png",

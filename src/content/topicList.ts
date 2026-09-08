@@ -21,6 +21,13 @@ interface TopicListEntry {
   highlightActresses: boolean;
   cast: string;
   actressMatches: Array<{ id: string; name: string; otherNames: string[]; isFavorite: boolean }>;
+  originalCellHtml: string;
+  originalCellClassName: string;
+  originalCellStyle: string | null;
+  originalRowStyle: string | null;
+  originalRowTitle: string | null;
+  originalRowParent: Node | null;
+  originalRowNextSibling: ChildNode | null;
 }
 
 interface TopicListProgress {
@@ -32,6 +39,10 @@ interface TopicListProgress {
 }
 
 let topicListModeActive = false;
+let topicListActivation = 0;
+let activeTopicListEntries: TopicListEntry[] = [];
+let activeTopicListProgress: TopicListProgress | null = null;
+let activeTopicListTableStyles = new Map<HTMLTableElement, string | null>();
 
 export function registerTopicListAbortHandler(): void {
   window.addEventListener("pagehide", () => {
@@ -154,6 +165,13 @@ function createTopicListEntries(table: HTMLTableElement): TopicListEntry[] {
       highlightActresses: false,
       cast: "",
       actressMatches: [],
+      originalCellHtml: cell.innerHTML,
+      originalCellClassName: cell.className,
+      originalCellStyle: cell.getAttribute("style"),
+      originalRowStyle: row.getAttribute("style"),
+      originalRowTitle: row.getAttribute("title"),
+      originalRowParent: row.parentNode,
+      originalRowNextSibling: row.nextSibling,
     });
   }
 
@@ -314,7 +332,10 @@ async function toggleTopicListEntry(
   }
 }
 
-async function loadTopicListEntry(entry: TopicListEntry): Promise<void> {
+async function loadTopicListEntry(
+  entry: TopicListEntry,
+  isCurrentActivation: () => boolean,
+): Promise<void> {
   const { preview, cast, button } = prepareTopicListCell(entry);
 
   try {
@@ -329,6 +350,7 @@ async function loadTopicListEntry(entry: TopicListEntry): Promise<void> {
       actressMatch?: { name: string; isFavorite: boolean };
       actressMatches?: Array<{ id: string; name: string; otherNames: string[]; isFavorite: boolean }>;
     };
+    if (!isCurrentActivation()) return;
     entry.images = Array.isArray(response.images) ? response.images : [];
     entry.cast = response.cast ?? "";
     entry.actressMatches = Array.isArray(response.actressMatches) ? response.actressMatches : [];
@@ -361,14 +383,21 @@ async function loadTopicListEntry(entry: TopicListEntry): Promise<void> {
 export async function activateTopicListMode(): Promise<void> {
   if (topicListModeActive) return;
 
+  const activation = ++topicListActivation;
+  const isCurrentActivation = (): boolean =>
+    topicListModeActive && topicListActivation === activation;
   const tables = findTopicListTables();
   if (tables.length === 0) return;
   topicListModeActive = true;
+  activeTopicListTableStyles = new Map(
+    tables.map((table) => [table, table.getAttribute("style")]),
+  );
 
   const allEntries = tables.flatMap((table) => {
     addTopicListOptionsIcon(table);
     return createTopicListEntries(table);
   });
+  activeTopicListEntries = allEntries;
   if (allEntries.length === 0) {
     // Leave activation retryable if rows are inserted after the content script.
     topicListModeActive = false;
@@ -376,6 +405,7 @@ export async function activateTopicListMode(): Promise<void> {
   }
 
   const settings = await getTopicListSettings();
+  if (!isCurrentActivation()) return;
   const entries = allEntries.filter((entry) => {
     entry.hidden = settings.hiddenTopicIds.has(getTopicId(entry.topicUrl));
     entry.hideHiddenTopics = settings.hideHiddenTopics;
@@ -390,21 +420,66 @@ export async function activateTopicListMode(): Promise<void> {
   if (entries.length === 0) return;
 
   const progress = createTopicListProgress(entries.length);
+  activeTopicListProgress = progress;
 
   // Keep the number of background tabs reasonable on large tracker pages.
   let nextIndex = 0;
   async function worker(): Promise<void> {
-    while (nextIndex < entries.length) {
+    while (isCurrentActivation() && nextIndex < entries.length) {
       const entry = entries[nextIndex++];
       if (!entry) continue;
       try {
-        await loadTopicListEntry(entry);
+        await loadTopicListEntry(entry, isCurrentActivation);
       } finally {
-        progress.completed += 1;
-        updateTopicListProgress(progress);
+        if (isCurrentActivation()) {
+          progress.completed += 1;
+          updateTopicListProgress(progress);
+        }
       }
     }
   }
   await Promise.all(Array.from({ length: Math.min(4, entries.length) }, worker));
+  if (!isCurrentActivation()) return;
   window.setTimeout(() => progress.root.remove(), 1200);
+}
+
+export function deactivateTopicListMode(): void {
+  topicListActivation += 1;
+  topicListModeActive = false;
+  sendMessageSafely({ action: "abortTopicLoads" });
+
+  activeTopicListProgress?.root.remove();
+  activeTopicListProgress = null;
+
+  for (const entry of activeTopicListEntries) {
+    if (!entry.row.isConnected && entry.originalRowParent) {
+      const nextSibling =
+        entry.originalRowNextSibling?.parentNode === entry.originalRowParent
+          ? entry.originalRowNextSibling
+          : null;
+      entry.originalRowParent.insertBefore(entry.row, nextSibling);
+    }
+
+    if (entry.row.isConnected) {
+      entry.cell.innerHTML = entry.originalCellHtml;
+      entry.cell.className = entry.originalCellClassName;
+      if (entry.originalCellStyle === null) entry.cell.removeAttribute("style");
+      else entry.cell.setAttribute("style", entry.originalCellStyle);
+
+      if (entry.originalRowStyle === null) entry.row.removeAttribute("style");
+      else entry.row.setAttribute("style", entry.originalRowStyle);
+      if (entry.originalRowTitle === null) entry.row.removeAttribute("title");
+      else entry.row.setAttribute("title", entry.originalRowTitle);
+    }
+  }
+
+  document.querySelectorAll(".__prnlb_list_options").forEach((element) => {
+    element.remove();
+  });
+  for (const [table, originalStyle] of activeTopicListTableStyles) {
+    if (originalStyle === null) table.removeAttribute("style");
+    else table.setAttribute("style", originalStyle);
+  }
+  activeTopicListTableStyles = new Map();
+  activeTopicListEntries = [];
 }
