@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "PRNLB Viewer",
-  "version": "1.0.4",
+  "version": "2.0.0",
   "description": "View screenshots from Pornolab topic pages in a carousel.",
   "browser_specific_settings": {
     "gecko": {
@@ -27,13 +27,23 @@
       "128": "icon.png"
     }
   },
+  "web_accessible_resources": [
+    {
+      "resources": ["icon.png"],
+      "matches": ["https://pornolab.net/*"]
+    }
+  ],
   "background": {
     "service_worker": "background.js",
     "scripts": ["background.js"]
   },
   "content_scripts": [
     {
-      "matches": ["https://pornolab.net/forum/viewtopic.php*"],
+      "matches": [
+        "https://pornolab.net/forum/viewtopic.php*",
+        "https://pornolab.net/forum/viewforum.php*",
+        "https://pornolab.net/forum/tracker.php*"
+      ],
       "js": ["content.js"]
     }
   ]

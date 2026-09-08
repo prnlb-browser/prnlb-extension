@@ -2,6 +2,9 @@ import type { ResolvedImage, ScrapedImage } from "./resolvers/types";
 
 export type ExtensionMessage =
   | { action: "showCarousel" }
+  | { action: "showTopicList" }
+  | { action: "loadTopicImages"; url: string }
+  | { action: "abortTopicLoads" }
   | { action: "resolveImages"; images: ScrapedImage[] }
   | { action: "abortResolution" }
   | {

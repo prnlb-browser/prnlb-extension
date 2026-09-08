@@ -1,6 +1,6 @@
 # PRNLB Viewer
 
-A browser extension (Chrome & Firefox) that extracts image URLs from Pornolab topic pages and displays them in a carousel overlay.
+A browser extension (Chrome & Firefox) that extracts image URLs from Pornolab topic pages and displays them in a carousel overlay. On forum and tracker topic lists, it can add a post-image preview and a screenshot button to each topic row.
 
 For more features, see [PRNLB Browser](https://github.com/prnlb-browser), a standalone app that goes beyond the capabilities of this extension.
 
@@ -45,7 +45,7 @@ npx tsc --noEmit
 4. Click **Load unpacked**
 5. Select the project root directory (`prnlb-extension/`)
 
-The extension will appear in your toolbar. Navigate to a Pornolab topic page and click the icon to open the screenshot carousel.
+The extension will appear in your toolbar. Navigate to a Pornolab topic page and click the icon to open the screenshot carousel. On a forum or tracker topic list, click the icon to populate the rows with previews and screenshot buttons.
 
 After making changes, run `npm run build` again and click the **reload** button on the extension card in `chrome://extensions/`.
 
