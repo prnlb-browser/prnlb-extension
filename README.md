@@ -4,7 +4,7 @@ PRNLB Viewer is a Chrome and Firefox extension for extracting image URLs from Po
 
 It has two operating modes:
 
-- When enabled (the default), a topic page automatically opens a screenshot carousel for the first post.
+- When enabled (the default), a topic page automatically gets a 📷 button over the first post image. Clicking it opens the screenshot carousel.
 - On a forum, tracker, or search-result topic list, the extension automatically adds a post-image preview and a screenshot button to each topic row. The button opens the same carousel for that topic.
 - The toolbar button is an ON/OFF toggle. Turning it off closes the current viewer and restores the original topic-list markup; turning it on immediately activates the current supported Pornolab page. The setting is remembered across page loads.
 - The topic-list options include an Actresses catalogue with aliases, favorites, profile-picture URLs, and Boobpedia/IAFD lookup. Actress search buttons open a new Pornolab search tab, and catalogue matches can highlight topic rows.

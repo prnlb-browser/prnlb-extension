@@ -2,6 +2,10 @@ import browser from "webextension-polyfill";
 import type { ExtensionMessage } from "./types";
 import { closeCarousel, openCarousel } from "./content/carousel";
 import {
+  activateTopicPageMode,
+  deactivateTopicPageMode,
+} from "./content/topicPage";
+import {
   activateTopicListMode,
   deactivateTopicListMode,
   registerTopicListAbortHandler,
@@ -13,7 +17,10 @@ browser.runtime.onMessage.addListener((rawMessage: unknown) => {
   const message = rawMessage as ExtensionMessage;
   if (message.action === "deactivate") {
     closeCarousel();
+    deactivateTopicPageMode();
     deactivateTopicListMode();
+  } else if (message.action === "activateTopicPage") {
+    activateTopicPageMode();
   } else if (message.action === "showCarousel") {
     openCarousel();
   } else if (message.action === "showTopicList") {

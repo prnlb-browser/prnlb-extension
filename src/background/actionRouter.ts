@@ -6,7 +6,7 @@ const FEATURE_ENABLED_KEY = "prnlbFeatureEnabled";
 
 function sendAction(
   tabId: number,
-  action: "showCarousel" | "showTopicList",
+  action: "activateTopicPage" | "showTopicList",
 ): void {
   browser.tabs.sendMessage(tabId, { action }).catch((err) => {
     console.warn("Could not send message:", (err as Error).message);
@@ -23,7 +23,7 @@ function sendActionForTab(tab: browser.Tabs.Tab): void {
   if (tab.id === undefined) return;
 
   if (isTopicPageUrl(tab.url)) {
-    sendAction(tab.id, "showCarousel");
+    sendAction(tab.id, "activateTopicPage");
     return;
   }
 
