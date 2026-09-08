@@ -14,7 +14,19 @@ Image-host pages are rendered in temporary browser tabs when necessary, which al
 
 For more features, see [PRNLB Browser](https://github.com/prnlb-browser), a standalone app that goes beyond the capabilities of this extension.
 
-![Screenshot](.github/assets/screenshot.png)
+## Screenshots
+
+![Topic-list image previews](.github/assets/01-topic-image-preview.png)
+
+![Topic screenshot button](.github/assets/02-topic-screenshots-button.png)
+
+![Screenshot carousel](.github/assets/03-topic-screenshots-carousel.png)
+
+![Memorized topics](.github/assets/04-memorized-topics.png)
+
+![Actress catalogue](.github/assets/05-actress-catalogue.png)
+
+![Actress details](.github/assets/06-actress-details.png)
 
 ## Development
 
@@ -110,6 +122,9 @@ PRNLB Viewer — расширение для Chrome и Firefox, которое �
 
 - На странице темы нажатие на иконку открывает карусель скриншотов первого сообщения.
 - На странице списка тем форума, трекера или результатов поиска нажатие на иконку добавляет к каждой строке превью изображения и кнопку открытия скриншотов темы.
+- Темы из списка можно запоминать. Запомненные темы, включая изображение, актёров и кликабельное название, доступны на вкладке «Memorized Topics» в настройках.
+- Кнопка расширения на панели инструментов включает и выключает его. Состояние сохраняется между загрузками страниц.
+- В настройках есть каталог актрис с псевдонимами, избранным, URL фотографий и поиском в Boobpedia/IAFD. Кнопки поиска актрис открывают новую вкладку поиска Pornolab.
 
 Больше возможностей доступно в [PRNLB Browser](https://github.com/prnlb-browser) — отдельном приложении с более широкой функциональностью.
 

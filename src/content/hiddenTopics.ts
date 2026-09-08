@@ -4,7 +4,7 @@ const HIDDEN_TOPIC_IDS_KEY = "prnlbHiddenTopicIds";
 const HIDE_HIDDEN_TOPICS_KEY = "prnlbHideHiddenTopics";
 const HIGHLIGHT_ACTRESSES_KEY = "prnlbHighlightActresses";
 const DEFAULT_HIDE_HIDDEN_TOPICS = true;
-const DEFAULT_HIGHLIGHT_ACTRESSES = false;
+const DEFAULT_HIGHLIGHT_ACTRESSES = true;
 
 export const TOPIC_LIST_SETTINGS_CHANGED_EVENT =
   "__prnlb_topic_list_settings_changed";

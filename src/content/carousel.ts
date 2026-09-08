@@ -195,7 +195,7 @@ async function loadAndShowImages(scrapedImages?: ScrapedImage[]): Promise<void> 
 
   carouselImages = [];
   carouselIndex = 0;
-  thumbsContainer.innerHTML = "";
+  thumbsContainer.replaceChildren();
 
   const progressListener = (rawMessage: unknown) => {
     const message = rawMessage as ExtensionMessage;

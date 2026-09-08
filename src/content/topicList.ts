@@ -29,7 +29,7 @@ interface TopicListEntry {
   highlightActresses: boolean;
   cast: string;
   actressMatches: Array<{ id: string; name: string; otherNames: string[]; isFavorite: boolean }>;
-  originalCellHtml: string;
+  originalCellNodes: ChildNode[];
   originalCellClassName: string;
   originalCellStyle: string | null;
   originalRowStyle: string | null;
@@ -173,10 +173,10 @@ function createTopicListEntries(table: HTMLTableElement): TopicListEntry[] {
       hidden: false,
       memorized: false,
       hideHiddenTopics: true,
-      highlightActresses: false,
+      highlightActresses: true,
       cast: "",
       actressMatches: [],
-      originalCellHtml: cell.innerHTML,
+      originalCellNodes: Array.from(cell.childNodes),
       originalCellClassName: cell.className,
       originalCellStyle: cell.getAttribute("style"),
       originalRowStyle: row.getAttribute("style"),
@@ -195,7 +195,7 @@ function prepareTopicListCell(entry: TopicListEntry): {
   button: HTMLButtonElement;
   memorizeButton: HTMLButtonElement;
 } {
-  entry.cell.innerHTML = "";
+  entry.cell.replaceChildren();
   entry.cell.classList.add("__prnlb_topic_preview_cell");
   entry.cell.style.verticalAlign = "middle";
 
@@ -531,7 +531,7 @@ export function deactivateTopicListMode(): void {
     }
 
     if (entry.row.isConnected) {
-      entry.cell.innerHTML = entry.originalCellHtml;
+      entry.cell.replaceChildren(...entry.originalCellNodes);
       entry.cell.className = entry.originalCellClassName;
       if (entry.originalCellStyle === null) entry.cell.removeAttribute("style");
       else entry.cell.setAttribute("style", entry.originalCellStyle);
