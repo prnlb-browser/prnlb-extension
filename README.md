@@ -1,16 +1,17 @@
 # PRNLB Viewer
 
-PRNLB Viewer is a Chrome and Firefox extension for extracting image URLs from Pornolab and displaying the corresponding screenshots.
+PRNLB Viewer is a Chrome and Firefox extension for extracting image links from supported Pornolab pages and displaying the corresponding screenshots.
 
-It has two operating modes:
+It activates automatically on supported Pornolab pages while enabled (the default):
 
-- When enabled (the default), a topic page automatically gets a 📷 button over the first post image. Clicking it opens the screenshot carousel.
-- On a forum, tracker, or search-result topic list, the extension automatically adds a post-image preview and a screenshot button to each topic row. The button opens the same carousel for that topic.
-- Topic-list rows can memorize topics. Memorized topics, including their image, cast, and clickable title, are available from the Memorized Topics options tab.
-- The toolbar button is an ON/OFF toggle. Turning it off closes the current viewer and restores the original topic-list markup; turning it on immediately activates the current supported Pornolab page. The setting is remembered across page loads.
-- The topic-list options include an Actresses catalogue with aliases, favorites, profile-picture URLs, and Boobpedia/IAFD lookup. Actress search buttons open a new Pornolab search tab, and catalogue matches can highlight topic rows.
+- On a topic page (`viewtopic.php`), it adds controls to the first post image: a 📷 button opens the screenshot carousel, a 🔖 button memorizes the topic, and an options button opens the settings dialog. The carousel resolves images progressively and supports keyboard navigation; clicking an image opens the resolved image in a new tab.
+- On forum and tracker topic lists (`viewforum.php` and `tracker.php`), including tracker search-result tables, it adds a first-post image preview, cast links, screenshot, memorize, and hide/show controls to each topic row. The screenshot button opens the same carousel for that topic.
+- Memorized topics are stored locally. The Memorized Topics options tab shows each topic's image, cast, and clickable title, and allows it to be removed.
+- The options dialog also includes an Actresses catalogue with search, aliases, favorites, editable picture URLs, and Boobpedia/IAFD lookup. Actress search buttons open a new Pornolab tracker search tab, and catalogue matches can highlight topic rows.
+- Topic-list settings can restrict the extension to topic pages, hide or show previously hidden topics, and enable or disable actress highlighting. These settings and the toolbar state are remembered across page loads.
+- The toolbar button is an ON/OFF toggle. Turning it off closes the current viewer, removes the extension's topic-page controls, and restores modified topic-list markup. Turning it on immediately activates the current supported Pornolab page.
 
-Image-host pages are rendered in temporary browser tabs when necessary, which allows the extension to handle hosts that depend on browser JavaScript or restrict direct requests.
+The built-in image resolvers support Fastpic, Imgbox, and TurboImageHost. Some image-host pages are rendered in temporary browser tabs when necessary, which allows the extension to handle hosts that depend on browser JavaScript or restrict direct requests. Unsupported image hosts fail gracefully and are skipped.
 
 For more features, see [PRNLB Browser](https://github.com/prnlb-browser), a standalone app that goes beyond the capabilities of this extension.
 
@@ -68,14 +69,17 @@ The build bundles `src/background.ts` and `src/content.ts`, then copies the mani
 ## Architecture
 
 - `src/background.ts` is the service-worker entry point and wires together the background services.
-- `src/background/topicParser.ts` parses rendered Pornolab topic HTML.
-- `src/background/topicPreviewService.ts` loads topic pages for list-row previews and manages their cancellation.
+- `src/background/topicParser.ts` parses rendered Pornolab topic HTML for first-post images and cast.
+- `src/background/topicPreviewService.ts` loads topic pages for list-row previews, caches results, and manages cancellation.
 - `src/background/imageResolutionService.ts` resolves carousel images and manages cancellation when the requesting tab closes or navigates away.
-- `src/resolvers/` contains image-host-specific resolvers.
-- `src/content/carousel.ts` implements the topic-page carousel.
-- `src/content/topicList.ts` implements previews and buttons in topic-list tables.
-- `src/content/memorizedTopics.ts` implements the local memorized-topic store.
-- `src/content/actresses.ts` implements the local actress catalogue and edit dialog.
+- `src/background/actressLookup.ts` looks up actress details through Boobpedia and IAFD.
+- `src/resolvers/` contains the Fastpic, Imgbox, and TurboImageHost resolvers.
+- `src/content/topicPage.ts` adds and removes controls on topic pages.
+- `src/content/carousel.ts` implements the progressive screenshot carousel.
+- `src/content/topicList.ts` implements previews, cast links, and controls in topic-list tables.
+- `src/content/optionsDialog.ts` implements the Actresses, Memorized Topics, and Options tabs.
+- `src/content/actresses.ts` implements the local actress catalogue and editor.
+- `src/content/memorizedTopics.ts`, `src/content/hiddenTopics.ts`, and `src/actressStore.ts` persist local topic and actress data.
 - `src/tabLoader.ts` loads rendered pages in temporary tabs and supports readiness polling and abort signals.
 
 The background/content boundary uses the message types in `src/types.ts`. Keep those actions stable when changing the UI or background services.
@@ -116,15 +120,18 @@ ETH — `0x87c7CB3d62Bc70A19638A01064B2028fB89E37BF`
 
 ## PRNLB Viewer (Русский)
 
-PRNLB Viewer — расширение для Chrome и Firefox, которое извлекает URL изображений со страниц Pornolab и показывает соответствующие скриншоты.
+PRNLB Viewer — расширение для Chrome и Firefox, которое извлекает ссылки на изображения с поддерживаемых страниц Pornolab и показывает соответствующие скриншоты.
 
-Расширение работает в двух режимах:
+Расширение автоматически активируется на поддерживаемых страницах Pornolab, пока оно включено (по умолчанию):
 
-- На странице темы нажатие на иконку открывает карусель скриншотов первого сообщения.
-- На странице списка тем форума, трекера или результатов поиска нажатие на иконку добавляет к каждой строке превью изображения и кнопку открытия скриншотов темы.
-- Темы из списка можно запоминать. Запомненные темы, включая изображение, актёров и кликабельное название, доступны на вкладке «Memorized Topics» в настройках.
-- Кнопка расширения на панели инструментов включает и выключает его. Состояние сохраняется между загрузками страниц.
-- В настройках есть каталог актрис с псевдонимами, избранным, URL фотографий и поиском в Boobpedia/IAFD. Кнопки поиска актрис открывают новую вкладку поиска Pornolab.
+- На странице темы (`viewtopic.php`) расширение добавляет к первому изображению сообщения кнопки: 📷 открывает карусель скриншотов, 🔖 запоминает тему, а кнопка с логотипом открывает настройки. Карусель загружает изображения по мере разрешения, поддерживает навигацию с клавиатуры и открывает выбранное изображение в новой вкладке.
+- На страницах списков тем форума и трекера (`viewforum.php` и `tracker.php`), включая таблицы результатов поиска, расширение добавляет к каждой строке превью первого изображения, актёров и кнопки скриншотов, запоминания и скрытия/показа темы.
+- Запомненные темы хранятся локально. На вкладке «Memorized Topics» отображаются изображение, актёры и кликабельное название темы; тему можно удалить из списка.
+- В настройках есть каталог актрис с поиском, псевдонимами, избранным, URL изображений и поиском в Boobpedia/IAFD. Кнопки поиска актрис открывают новую вкладку поиска Pornolab, а совпадения каталога могут подсвечивать строки тем.
+- В настройках списка тем можно ограничить работу только страницами тем, показывать или скрывать ранее скрытые темы и включать или выключать подсветку актрис. Эти настройки и состояние кнопки расширения сохраняются между загрузками страниц.
+- Кнопка расширения на панели инструментов включает и выключает его. При выключении закрывается текущий просмотрщик, удаляются элементы расширения со страницы темы и восстанавливается исходная разметка списка тем; при включении текущая поддерживаемая страница активируется сразу.
+
+Встроенные обработчики изображений поддерживают Fastpic, Imgbox и TurboImageHost. При необходимости страницы хостов открываются во временных вкладках браузера, что позволяет работать с хостами, использующими JavaScript или ограничивающими прямые запросы. Неподдерживаемые хосты пропускаются без остановки остальных изображений.
 
 Больше возможностей доступно в [PRNLB Browser](https://github.com/prnlb-browser) — отдельном приложении с более широкой функциональностью.
 
