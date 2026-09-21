@@ -39,6 +39,24 @@ export class FastpicResolver implements ImageHostResolver {
       const bigUrl = this.extractBigImageUrl(html);
       if (bigUrl) return bigUrl;
 
+      // Fastpic may first return an interstitial page. Its continuation link
+      // leads to the same view page with a short-lived query parameter, and
+      // that page links to the fullview page containing the signed image URL.
+      const continuationUrl = this.extractContinuationUrl(html, pageUrl);
+      const continuationHtml = continuationUrl
+        ? await this.fetchPage(continuationUrl, signal)
+        : html;
+      const continuationBigUrl = this.extractBigImageUrl(continuationHtml);
+      if (continuationBigUrl) return continuationBigUrl;
+
+      const fullViewUrl =
+        this.extractFullViewUrl(continuationHtml) || this.extractFullViewUrl(html);
+      if (fullViewUrl) {
+        const fullViewHtml = await this.fetchPage(fullViewUrl, signal);
+        const fullViewBigUrl = this.extractBigImageUrl(fullViewHtml);
+        if (fullViewBigUrl) return fullViewBigUrl;
+      }
+
       // If the HTML contained no big-image link but the original URL is itself
       // already a /big/ image, use it directly as the fallback.
       const parsed = new URL(url);
@@ -116,21 +134,67 @@ export class FastpicResolver implements ImageHostResolver {
   private extractBigImageUrl(html: string): string | null {
     const normalizedHtml = html.replace(/\s+/g, " ");
 
-    // Pattern 1: Look for <img> tags with big image URLs
-    const imgRegex = /<img[^>]+src=["'](https?:\/\/i\d+\.fastpic\.org\/big\/[^"']+)["']/i;
-    const imgMatch = normalizedHtml.match(imgRegex);
-    if (imgMatch) {
-      return this.upgradeToHttps(this.decodeHtmlEntities(imgMatch[1]!));
+    // Fullview pages put the signed URL in a script variable. Check this
+    // before generic markup so an unrelated 1x1 tracking image cannot win.
+    const loadingImageMatch = normalizedHtml.match(
+      /\bloading_img\s*=\s*["']((?:https?:)?\/\/i\d+\.fastpic\.org\/big\/[^"']+)["']/i,
+    );
+    if (loadingImageMatch?.[1]) {
+      return this.normalizeImageUrl(loadingImageMatch[1]);
     }
 
-    // Pattern 2: Look for direct URL references to big images in any attribute
-    const urlRegex = /(https?:\/\/i\d+\.fastpic\.org\/big\/[^\s<>"']+)/i;
-    const urlMatch = normalizedHtml.match(urlRegex);
-    if (urlMatch) {
-      return this.upgradeToHttps(this.decodeHtmlEntities(urlMatch[1]!));
+    // Rendered view pages assign the signed URL to an image or download link.
+    // Restrict this lookup to HTML attributes to avoid ad/tracker CSS URLs.
+    const attributeRegex =
+      /\b(?:src|href|data-src|data-original)\s*=\s*["']((?:https?:)?\/\/i\d+\.fastpic\.org\/big\/[^"']+)["']/gi;
+    const attributeMatch = attributeRegex.exec(normalizedHtml);
+    if (attributeMatch?.[1]) {
+      return this.normalizeImageUrl(attributeMatch[1]);
     }
 
     return null;
+  }
+
+  private extractFullViewUrl(html: string): string | null {
+    const match = html.match(
+      /https:\/\/(?:www\.)?fastpic\.org\/fullview\/[^\s<>'"]+/i,
+    );
+    return match?.[0]?.replace(/&amp;/g, "&").replace(/[),;]+$/, "") ?? null;
+  }
+
+  private extractContinuationUrl(html: string, pageUrl: string): string | null {
+    let page: URL;
+    try {
+      page = new URL(pageUrl);
+    } catch {
+      return null;
+    }
+
+    const hrefRegex = /\bhref\s*=\s*["']([^"']+)["']/gi;
+    let match: RegExpExecArray | null;
+    while ((match = hrefRegex.exec(html)) !== null) {
+      try {
+        const candidate = new URL(this.decodeHtmlEntities(match[1]!), pageUrl);
+        if (
+          candidate.origin === page.origin &&
+          candidate.pathname === page.pathname &&
+          candidate.search &&
+          !candidate.searchParams.has("lang") &&
+          !candidate.searchParams.has("info") &&
+          !candidate.searchParams.has("codes")
+        ) {
+          return candidate.toString();
+        }
+      } catch {
+        // Ignore unrelated or malformed links.
+      }
+    }
+    return null;
+  }
+
+  private normalizeImageUrl(value: string): string {
+    const decoded = this.decodeHtmlEntities(value).trim();
+    return this.upgradeToHttps(decoded.startsWith("//") ? `https:${decoded}` : decoded);
   }
 
   private upgradeToHttps(url: string): string {

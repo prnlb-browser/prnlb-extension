@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "PRNLB Viewer",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "description": "View screenshots from Pornolab topic pages in a carousel.",
   "browser_specific_settings": {
     "gecko": {
@@ -18,6 +18,8 @@
     "https://imgbox.com/*",
     "https://*.turboimagehost.com/*",
     "https://turboimagehost.com/*",
+    "https://*.picshick.com/*",
+    "https://picshick.com/*",
     "https://www.boobpedia.com/*",
     "https://www.iafd.com/*"
   ],
