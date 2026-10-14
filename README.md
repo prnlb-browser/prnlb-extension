@@ -1,6 +1,12 @@
-# PRNLB Viewer
+# PRNLB Viewer — Pornolab Image Preview for Chrome and Firefox
 
-PRNLB Viewer is a Chrome and Firefox extension for extracting image links from supported Pornolab pages and displaying the corresponding screenshots.
+PRNLB Viewer is a Pornolab image preview extension for Chrome and Firefox. It adds image previews to forum topic lists and tracker search results, and lets you browse topic screenshots in a carousel with keyboard navigation.
+
+Preview a topic's first-post image directly in the list, then use its screenshot button to browse the available screenshots without opening each image-host page yourself.
+
+[Download the latest release](https://github.com/prnlb-browser/prnlb-extension/releases) · [Install in Chrome](#install-in-chrome) · [Install in Firefox](#install-in-firefox) · [Русский](#prnlb-viewer-русский)
+
+## Features
 
 It activates automatically on supported Pornolab pages while enabled (the default):
 
@@ -15,13 +21,20 @@ The built-in image resolvers support Fastpic, Imgbox, and TurboImageHost. Some i
 
 For more features, see [PRNLB Browser](https://github.com/prnlb-browser), a standalone app that goes beyond the capabilities of this extension.
 
+## How to preview images on Pornolab
+
+1. Install PRNLB Viewer using the [Chrome](#install-in-chrome) or [Firefox](#install-in-firefox) instructions below, and leave the extension enabled.
+2. Open a forum topic list or tracker search results on `https://pornolab.net`. Image previews appear alongside the topics.
+3. Click a topic row's 📷 screenshot button to open its screenshot carousel. On a topic page, use the 📷 button attached to the first post image.
+4. Browse screenshots as they load, use the keyboard to navigate, or click an image to open the resolved image in a new tab.
+
 ## Screenshots
 
-![Topic-list image previews](.github/assets/01-topic-image-preview.png)
+![Pornolab forum topic list with first-post image previews](.github/assets/01-topic-image-preview.png)
 
-![Topic screenshot button](.github/assets/02-topic-screenshots-button.png)
+![Screenshot button for opening a Pornolab topic's carousel](.github/assets/02-topic-screenshots-button.png)
 
-![Screenshot carousel](.github/assets/03-topic-screenshots-carousel.png)
+![PRNLB Viewer screenshot carousel for a Pornolab topic](.github/assets/03-topic-screenshots-carousel.png)
 
 ![Memorized topics](.github/assets/04-memorized-topics.png)
 
@@ -120,7 +133,11 @@ ETH — `0x87c7CB3d62Bc70A19638A01064B2028fB89E37BF`
 
 ## PRNLB Viewer (Русский)
 
-PRNLB Viewer — расширение для Chrome и Firefox, которое извлекает ссылки на изображения с поддерживаемых страниц Pornolab и показывает соответствующие скриншоты.
+### Pornolab: просмотр скриншотов и предпросмотр картинок
+
+PRNLB Viewer — расширение для Chrome и Firefox для просмотра скриншотов на Pornolab (Порнолаб). Предпросмотр картинок доступен прямо в списках тем форума и результатах поиска трекера, а скриншоты темы открываются в карусели с навигацией с клавиатуры.
+
+Чтобы посмотреть изображения, установите расширение по инструкции ниже и откройте список тем на `https://pornolab.net`. Рядом с темами появятся превью первого изображения. Нажмите 📷 в строке темы, чтобы открыть карусель скриншотов; на странице самой темы эта кнопка находится у первого изображения сообщения.
 
 Расширение автоматически активируется на поддерживаемых страницах Pornolab, пока оно включено (по умолчанию):
 
